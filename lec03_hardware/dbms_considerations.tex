@@ -1,0 +1,240 @@
+%!TEX root = ./lec03_hardware.tex
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}{DBMS Operational Requirements}
+
+
+\vskip2em
+
+The DBMS must meet these conflicting goals:
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.475\textwidth}
+\begin{BOX}{Preserving data}
+To \textbf{preserve the data}, the DBMS must make sure that it is safely stored in persistent storage\footnotemark.
+\end{BOX}
+\end{column}
+\begin{column}{0.475\textwidth}
+\begin{BOX}{Using data}
+Queries and updates are processed by the CPU!\\
+ - the data needs to reach the registers
+\end{BOX}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+As a result: \alert{data is always on the move}.
+
+
+\footnotetext{In fact, the privacy-conscious should note that it can be \emph{very hard} to erase data that has been properly written into persistent storage.}
+
+\vskip2em
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}{How can the DBMS use persistent storage?}
+
+\textbf{Option \#1}: via a File System:\footnote{\url{https://en.wikipedia.org/wiki/File_system}}\\
+- there are many good file systems out there;\\
+- however, they are optimized to handle a \emph{large number of small files}, logically organized into hierarchies (directories); databases typically have a \emph{small number of large tables}.
+
+% \vskip1em
+
+\textbf{Option \#2}: implementing \highlight{its own} I/O management:\\
+- the Buffer Manager reads/writes directly from/to the device;\\
+- requires integration with the Operating System kernel.\footnote{\url{https://en.wikipedia.org/wiki/Kernel_(operating_system)}}
+
+\vskip0.5em
+
+\underline{Most DBMSs have their own I/O stack}, and some require changing the Operating System to work.
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.75\textwidth}
+\vskip2em
+\begin{BOX}{The Buffer Manager}
+
+DBMS module responsible for moving data between storage and memory.
+
+\vskip0.5em
+
+It splits main memory into logical units called \emph{buffers}, which are often the same size of a memory page.
+\end{BOX}
+\vskip1em
+
+Before data becomes visible to the CPU, it must be \emph{copied} in every level of the memory hierarchy!
+
+\vskip1em
+Because I/O is so slow, a badly designed Buffer Manager can make the DBMS unusable.
+\end{column}
+\begin{column}{0.2\textwidth}
+\includegraphics[width=\textwidth]{./figures/buffer_manager}
+\end{column}
+\end{columns}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}
+\begin{columns}[onlytextwidth]
+\begin{column}{0.75\textwidth}
+\vskip2em
+\begin{BOX}{Updates}
+When the processor changes an attribute of a tuple, the new value is modified in the cache and the memory first.
+\end{BOX}
+
+\vskip0.5em
+
+\begin{BOX}{Insertions}
+When a new tuple is inserted, it is stored in some buffer in memory first.\\
+ -if there is no room in any buffer, a \emph{new one is created} in memory first.
+\end{BOX}
+
+\vfill
+
+Any buffer containing data not yet on the storage layer is said to be \highlight{dirty}.
+\end{column}
+\begin{column}{0.2\textwidth}
+\includegraphics[width=\textwidth]{./figures/buffer_manager_2}
+\end{column}
+\end{columns}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}
+
+\vskip2em
+
+\begin{BOX}{Dirty data sits in volatile memory}
+The Buffer Manager must \alert{\emph{flush} dirty buffers} to the storage layer for the changes to become persistent.
+\end{BOX}
+
+\vskip1em
+
+Trade-off:
+\begin{itemize}[-,topsep=-0.5em,noitemsep]
+\item Because storage is so slow, it is a bad idea to flush dirty buffers \underline{immediately} after every insert/update.
+\item The changes to the database do not become permanent \alert{until} they are written on persistent storage.
+\end{itemize}
+
+
+
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}{Logging, Persistence and Recovery}
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.6\textwidth}
+The DBMS keeps a log of every modification (insertion, deletion, update) done to the database, \emph{on a separate} file (or even a separate storage device).
+
+\vskip1em
+
+Dirty buffers can safely remain in memory as soon as the changes are written to the log.
+
+\vskip1em
+
+If the computer crashes, all changes still in memory can be recovered from the log.
+\end{column}
+\begin{column}{0.4\textwidth}
+\hspace*{2em}\includegraphics[width=\textwidth]{figures/buffer_manager_log_writer.eps}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+
+%
+% ---------------------------------------------------------------------------
+%
+\input{lec04_access_methods/macros/movie_flat_index_macros}
+
+\begin{frame}{Database ``Files''?}
+
+Tables are collections of records stored on ``files'' (chains of fixed-sized blocks). Indexes help the DBMS find tuples through pointers.
+
+
+\begin{tikzpicture}
+\node [anchor=north west] at (-0.15,0) {\scalebox{0.85}{\usebox\TitleYearIndexOnMovie}};
+\node [color=accent] at (1,0.5) {Index File};
+\node [color=accent] at (5,0.5) {Table File};
+\end{tikzpicture}
+
+A ``database pointer'' identifies the storage device \emph{and} a block address which can be translated into a device-specific address (recall slide~\ref{block_oriented_storage}).
+
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}{Main Memory Databases}
+
+Some DBMSs (including SQLite) are optimized for main memory and use only virtual memory as its address space.
+
+This is rarely a problem, as Virtual Memory can grow to Petabytes (recall Slide~\ref{virtual_memory_size}) with modern computers.
+
+In any case, relying on virtual memory as the database address space simplifies the DBMS architecture a lot. For example ``database'' pointers can be simplified to virtual memory addresses.
+
+Main-memory DBMSs are also optimized for single-user applications (like mobile applications and video games).
+
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}{What about bigger databases?}
+
+A very small number of applications (and organizations) deal with more than a Petabyte. In such cases, we need clusters of high-performance computers and (often) a custom DBMS.
+
+\begin{center}
+\begin{tikzpicture}
+\node at (0,0) [anchor=south east] {\includegraphics[width=0.4\textwidth]{figures/small_cluster.eps}};
+\end{tikzpicture}
+\end{center}
+
+In such cases, to identify a tuple we need to know:\\
+ - the specific block of a specific storage device holding the tuple\\
+ - the IP address of the server with that device (if using a cluster)
+
+
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}
+
+The standard DBMS implementations use \alert{\textbf{symbolic}} pointers, even for single CPU DBMSs.
+
+Symbolic addresses are typically \underline{much larger} than a memory address. 
+Also, symbolic addresses \alert{\textbf{must be resolved}} into virtual memory addresses!
+
+\vskip1.5em
+
+\begin{BOX}{Resolving pointers as blocks are loaded...}
+When the Buffer Manager loads a symbolic pointer to memory, it must translate that symbolic address to an actual \emph{virtual memory} address where the target of the link is actually loaded.
+\end{BOX}
+\end{frame}

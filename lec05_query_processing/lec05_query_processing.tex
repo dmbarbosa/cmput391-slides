@@ -1,0 +1,109 @@
+\documentclass[xcolor={usenames,dvipsnames}
+     % ,handout
+]{beamer}
+
+%
+% ugly hack referring to the slides folder. Works for me.
+%
+\makeatletter
+\def\input@path{{/Users/denilson/teaching/cmput391/git-slides/}}
+\makeatother
+
+\usepackage{pifont}% http://ctan.org/pkg/pifont
+\newcommand{\cmark}{\textcolor{green}{\ding{51}}}%
+\newcommand{\xmark}{\textcolor{accent}{\ding{55}}}%
+
+%
+% Used for cost estimation
+% 
+\def\MIN{\mathit{low}}
+\def\MAX{\mathit{high}}
+
+
+
+\input{cmput391macros}
+
+\title{Overview of Query Execution and Optimization}
+
+\begin{document}
+
+\input{examples/movies_schema}
+\input{examples/movies_data}
+
+\frame{\maketitle}
+
+\newsavebox\genericSetOperator
+\savebox{\genericSetOperator}{
+\begin{tikzpicture}[semithick,align=center,node distance=0.825cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+    \node (0) at (0,0) {};
+    \node (1) [below of=0] {\textcolor{orange}{\lstinline{<op>}}};
+    \node (2) [below of=1,xshift=-0.75cm] {\lstinline{scan}($R$)};
+    \node (3) [below of=1,xshift=0.75cm] {\lstinline{scan}($S$)};
+
+    \path[->]
+        (1) edge (0)
+        (2) edge (1)
+        (3) edge (1);
+\end{tikzpicture}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}{Simplified DBMS architecture}
+
+\begin{center}
+\includegraphics[width=0.8\textwidth]{../lec00_intro/figures/dbms_architecture}
+\end{center}
+
+These notes look into algorithms and data structures used to answer relational queries.
+\end{frame}
+
+\input{intro}
+\tableofcontents
+
+%%%%%%%%%% ------------------------
+
+\section{Query Compilation}
+\input{query_compilation}
+
+%%%%%%%%%%%%%%%% ------------------------
+
+\section{The Iterator Model}
+\input{iterators}
+
+%%%%%%%%%%%%%%%% ------------------------
+
+\section{Iterators for Main Memory}
+\input{basic_algorithms}
+
+%%%%%%%%%%%%%%%% ------------------------
+
+\section{Iterators for External Memory}
+\input{sort_merge}
+
+%%%%%%%%%%%%%%%% ------------------------
+
+\section{Cost Estimation}
+\input{cost_estimation}
+
+%%%%%%%%%%%%%%%% ------------------------
+
+\section{Cost-based Query Optimization}
+\input{sellinger_optimizer}
+
+%%%%%%%%%%%%%%%% ------------------------
+
+\section{Query Plans with Indexes}
+\input{index_based_algorithms}
+
+%%%%%%%%%%%%%%%% ------------------------
+
+\section{Other SQL Constructs}
+\input{other_constructs}
+
+%%%%%%%%%%%%%%%% ------------------------
+
+\section{Heuristic Optimizers}
+\input{heuristic_optimizer}
+
+
+\end{document}

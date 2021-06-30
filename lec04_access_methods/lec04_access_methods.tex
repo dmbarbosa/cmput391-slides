@@ -1,0 +1,109 @@
+\documentclass[xcolor={usenames,dvipsnames}
+    ,handout
+]{beamer}
+
+%
+% ugly hack referring to the slides folder. Works for me.
+%
+\makeatletter
+\def\input@path{{/Users/denilson/teaching/cmput391/git-slides/}}
+\makeatother
+
+\input{cmput391macros}
+
+\title{Database Access Methods}
+
+\begin{document}
+
+\input{examples/movies_schema}
+\input{examples/movies_data}
+
+\input{macros/movie_flat_index_macros}
+
+\frame{\maketitle}
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}{How is the data laid out in the storage layer?}
+
+
+\begin{center}
+\includegraphics[width=0.9\textwidth]{../lec03_hardware/figures/blocks_on_storage}
+\end{center}
+
+These notes are concerned with how the DBMS stores a database on disk and the cost of retrieving data.
+
+\end{frame}
+
+
+\newsavebox\lecIVsqlExampleONE
+\begin{lrbox}{\lecIVsqlExampleONE}
+\begin{lstlisting}[style=SQL]
+SELECT g.start
+FROM Guide g, Cast c
+WHERE g.film=c.title AND g.year=c.year
+    AND g.theater='Garneau' 
+	AND c.actor='Bill Murray'
+\end{lstlisting}
+\end{lrbox}
+
+\begin{frame}[fragile]
+
+Answering a query requires pulling data from disk to registers (via RAM) so that the CPU can compute the answer.
+
+Some queries require the DBMS to read all tuples from a table:
+
+\begin{center}
+\fbox{\lstinline[style=SQL]{SELECT AVG(imdb) FROM Movie}}
+\end{center}
+
+
+\vskip1em
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+Most queries, however, require far fewer tuples.\\[0.5em]
+
+For example, only tuples with '\lstinline{Bill Murray}' and '\lstinline{Garneau}' are needed here.
+\end{column}
+\begin{column}{0.485\textwidth}
+\scalebox{0.9}{\fbox{\usebox\lecIVsqlExampleONE}}
+\end{column}
+\end{columns}
+
+\vskip0.75em
+
+These slides look into methods for storing and/or indexing the data that the database administrator can use to speed up the (queries in the) application.
+
+\end{frame}
+
+\section{Introduction}
+\input{basic_concepts}
+
+\section{Heap and Sequential Files}
+\input{heap_files}
+
+\section{Indexing Concepts}
+\input{macros/flat_index_macros}
+\input{flat_indexes}
+
+\section{Range Searches}
+\input{range_searches}
+
+\section{Bucket Files and\\ Efficient Secondary Indexes}
+\input{macros/bucket_files}
+\input{bucket_files}
+
+\section{B+ Trees}
+\input{b_trees}
+
+\section{Hash Files}
+\input{hashing}
+
+\section{Multi-key Access Methods}
+\input{multi_attribute_index}
+
+\section{Other Aspects}
+\input{other_aspects}
+
+\end{document}

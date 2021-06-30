@@ -1,0 +1,48 @@
+
+%
+% Tikz stuff, for cummulative diagrams and algebra trees
+%
+\usepackage{tikz} %commutative diagrams
+\usepackage{tikz-cd} %commutative diagrams
+\usetikzlibrary{positioning}% To get more advances positioning options
+\usetikzlibrary{arrows,shapes,automata}
+\usetikzlibrary{calc} % for calculations and hard-coded coordinates
+\usetikzlibrary{tikzmark, fit, shapes.misc}
+\usetikzlibrary{decorations.pathreplacing}
+\usetikzlibrary{backgrounds} % to draw underneath other elements
+\usepackage{stackengine} % to overlay tikz pictures over other things
+
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+
+%
+%
+% PGF arrowtip that looks like an X
+%
+%
+\pgfarrowsdeclare{X}{X}
+{
+  \arrowsize=0.25pt
+  \advance\arrowsize by .5\pgflinewidth
+  \pgfarrowsleftextend{-4\arrowsize-.5\pgflinewidth}
+  \pgfarrowsrightextend{.5\pgflinewidth}
+}
+{
+  \arrowsize=0.2pt
+  \advance\arrowsize by .5\pgflinewidth
+  \pgfsetdash{}{0pt} % do not dash
+  \pgfsetroundjoin   % fix join
+  \pgfsetroundcap    % fix cap
+  \pgfpathmoveto{\pgfpointorigin}
+  \pgfpathlineto{\pgfpoint{-5\arrowsize}{5\arrowsize}}
+  \pgfusepathqstroke
+  \pgfpathmoveto{\pgfpointorigin}
+  \pgfpathlineto{\pgfpoint{5\arrowsize}{-5\arrowsize}}
+  \pgfusepathqstroke
+  \pgfpathmoveto{\pgfpointorigin}
+  \pgfpathlineto{\pgfpoint{-5\arrowsize}{-5\arrowsize}}
+  \pgfusepathqstroke
+  \pgfpathmoveto{\pgfpointorigin}
+  \pgfpathlineto{\pgfpoint{5\arrowsize}{5\arrowsize}}
+  \pgfusepathqstroke
+}

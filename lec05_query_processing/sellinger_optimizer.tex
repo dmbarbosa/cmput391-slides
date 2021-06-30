@@ -1,0 +1,622 @@
+%!TEX root = lec05_query_processing.tex
+
+
+%
+% ------------------------------------------------------------------------
+%
+\begin{frame}{Goal of the Query Optimizer}
+
+The goal of the query optimizer is to find \textbf{optimal query plans}. Because of \alert{\textbf{Rule \#1}} below, DBMSs aim for plans with the lowest possible \textbf{estimated}\footnote{Recall that to find the \textbf{actual} cost, the DBMS would have to execute the plan. It makes no sense to use actual costs of multiple plans.} cost.
+
+In general, query optimization is NP-hard. In practice, the optimizer considers only a subset of the possible query plans for each query, and picks a plan with lowest estimated cost.
+
+\vskip1em
+
+\begin{block}{\alert{Rule \#1} of query optimization}
+The time it takes the optimizer to find a good plan cannot exceed the time it would take to execute a ``reasonable'' plan.
+\end{block}
+\end{frame}
+
+\newsavebox{\leftDeepTree}
+\savebox{\leftDeepTree}{
+	\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+	\node (0) {$\Join$};
+	\node (1) [below left=of 0] {$\Join$};
+	\node (2) [below left=of 1] {$\Join$};
+	\node (R) [below left= of 2] {$R$};
+	\node (S) [below right= of 2] {$S$};
+	\node (T) [below right= of 1] {$T$};
+	\node (U) [below right= of 0] {$U$};
+    \path[->]
+        (1) edge (0)
+        (2) edge (1)
+        (R) edge (2)
+        (S) edge (2)
+        (T) edge (1)
+        (U) edge (0);
+\end{tikzpicture}}
+
+\newsavebox{\rightDeepTree}
+\savebox{\rightDeepTree}{
+	\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+	\node (0) {$\Join$};
+	\node (1) [below right=of 0] {$\Join$};
+	\node (2) [below right=of 1] {$\Join$};
+	\node (R) [below left= of 0] {$R$};
+	\node (S) [below left= of 1] {$S$};
+	\node (T) [below left= of 2] {$T$};	
+	\node (U) [below right= of 2] {$U$};
+    \path[->]
+        (1) edge (0)
+        (2) edge (1)
+        (R) edge (0)
+        (S) edge (1)
+        (T) edge (2)
+        (U) edge (2);
+\end{tikzpicture}}
+
+
+\newsavebox{\bushyTree}
+\savebox{\bushyTree}{
+	\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+	\node (0) {$\Join$};
+	\node (1) [below left=of 0] {$\Join$};
+	\node (2) [below right=of 0] {$\Join$};
+	\node (R) [below left= of 1] {$R$};
+	\node (S) [below right= of 1,xshift=-7.5pt] {$S$};
+	\node (T) [below left= of 2,xshift=7.5pt] {$T$};	
+	\node (U) [below right= of 2] {$U$};
+    \path[->]
+        (1) edge (0)
+        (2) edge (0)
+        (R) edge (1)
+        (S) edge (1)
+        (T) edge (2)
+        (U) edge (2);
+\end{tikzpicture}}
+
+\newsavebox{\wiggleLeftTree}
+\savebox{\wiggleLeftTree}{
+	\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+	\node (0) {$\Join$};
+	\node (1) [below right=of 0] {$\Join$};
+	\node (2) [below left=of 1] {$\Join$};
+	\node (R) [below left= of 0] {$R$};
+	\node (S) [below left= of 2] {$S$};
+	\node (T) [below right= of 2] {$T$};	
+	\node (U) [below right= of 1] {$U$};
+    \path[->]
+        (1) edge (0)
+        (2) edge (1)
+        (R) edge (0)
+        (S) edge (2)
+        (T) edge (2)
+        (U) edge (1);
+\end{tikzpicture}}
+
+\newsavebox{\wiggleRightTree}
+\savebox{\wiggleRightTree}{
+	\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+	\node (0) {$\Join$};
+	\node (1) [below left=of 0] {$\Join$};
+	\node (2) [below right=of 1] {$\Join$};
+	\node (R) [below left= of 1] {$R$};
+	\node (S) [below left= of 2] {$S$};
+	\node (T) [below right= of 2] {$T$};	
+	\node (U) [below right= of 0] {$U$};
+    \path[->]
+        (1) edge (0)
+        (2) edge (1)
+        (R) edge (1)
+        (S) edge (2)
+        (T) edge (2)
+        (U) edge (0);
+\end{tikzpicture}}
+
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+\begin{frame}{Query Optimization With Dynamic Programming (Sellinger, 1979)}
+
+Dynamic programming is an algorithmic problem-solving technique suitable for optimization problems where the solution builds on solutions to sub-problems. 
+
+\underline{Dynamic programming works bottom-up}: decompose the problem into every atomic sub-problem and solve them; the solution with $n+1$ sub-problems builds on the lowest cost solution of size $n$.
+
+\vskip2em
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+
+\node (0) {$\pi_{a_1,\ldots,a_n}$};
+\node (1) [below= of 0] {$\sigma_{c_1 \wedge c_2}$};
+\node (2) [below= of 1] {$\Join$};
+\node (3) [below left= of 2] {$\Join$};
+\node (4) [below right= of 2] {$T$};
+\node (3a) [below left= of 3] {$R$};
+\node (3b) [below right= of 3] {$S$};
+\path[->]
+        (1) edge (0)
+        (2) edge (1)
+        (3) edge (2)
+        (4) edge (2)
+        (3a) edge (3)
+        (3b) edge (3);
+
+\node (5) [right= 1cm of 1] {$\pi_{a_1,\ldots,a_n}$};
+\node (6) [right= of 5] {$\sigma_{c_1}$};
+\node (7) [right= of 6] {$\sigma_{c_2}$};
+\node (8) [right= of 7] {$\Join$};
+\node (9) [right= of 8] {$\Join$};
+\node (10) [right= of 9] {$R$};
+\node (11) [right= of 10] {$S$};
+\node (12) [right= of 11] {$T$};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+\begin{frame}{Dynamic Programming Optimizer}
+
+\textbf{Step 1:} for each atomic sub-problem $Q$, compute:
+\begin{itemize}[-,topsep=-0.5em,noitemsep]
+\item $T(Q) \text{ or } B(Q)$: the estimated size of $Q$
+\item $\mathit{plan}(Q)$: the lowest-cost plan to compute $Q$
+\item $\alert{\mathit{cost}(Q)}$: the actual cost to compute $Q$.
+\end{itemize}
+
+\vskip1em
+
+\textbf{Step 2:} build, recursively, all legal solutions of size $n+1$, considering all combinations of a solution of size $n$ and the solution to another sub-problem. Keep the one with least cost.
+
+\vskip1em
+
+Invalid partial solutions (e.g., doing a projection ``before scanning a table'') are discarded.
+\end{frame}
+
+
+\begin{frame}
+
+The \alert{cost function} needs to take into account \textbf{both} \blue{I/O} \textbf{and} \blue{memory} costs. However, these two costs have different units, so we cannot just add them up.
+
+Different systems achieve this goal differently. One simple way is to consider the number of tuples that are read and computed. 
+
+For example:
+
+\begin{itemize}[-,topsep=-0.5em,noitemsep]
+\item $\mathit{cost}(R) = T(R)$
+\item $\mathit{cost}(\rho_{S(s_1,\ldots,s_n)}(R)) = \alert{\mathit{cost}(R)}$
+\item $\mathit{cost}(\sigma_C(R)) = T(\sigma_C(R)) + \alert{\mathit{cost}(R)}$
+\item $\mathit{cost}(\pi_{a_1,\ldots,a_n}(R)) = T(\pi_{a_1,\ldots a_n}(R)) + \alert{\mathit{cost}(R)}$
+\item $\mathit{cost}(R\Join_C S)\blue{\footnotemark} = T(R \Join_C S) + \alert{\mathit{cost}(R)+\mathit{cost}(S)}$ 
+\end{itemize}
+
+\footnotetext{This is an in-memory nested-loop-join.}
+\end{frame}
+
+% %
+% % -----------------------------------------------------------------------------------------------
+%
+\begin{frame}{Why is Join Ordering Important?}
+
+There is a combinatorial number of plans that join $N$ relations. 
+
+\textbf{Example:} $N=4$. Here are the 5 ``shapes'' for a 4-way join:
+
+\begin{center}
+\begin{tikzpicture}[node distance=0.25cm]
+\node (0) {\scalebox{0.75}{\usebox{\leftDeepTree}}};
+\node (1) [right=of 0] {\scalebox{0.75}{\usebox{\rightDeepTree}}};
+\node (2) [right=of 1] {\scalebox{0.75}{\usebox{\bushyTree}}};
+\node (3) [right=of 2] {\scalebox{0.75}{\usebox{\wiggleLeftTree}}};
+\node (4) [right=of 3] {\scalebox{0.75}{\usebox{\wiggleRightTree}}};
+\end{tikzpicture}
+\end{center}
+
+With each shape\footnote{The number of shapes comes from \url{https://en.wikipedia.org/wiki/Catalan_number}.} we can have any of the permutations of the relations. With relations there are $4!(\frac{6!}{(4! \cdot 3!)})=120$ alternatives. 
+
+With 5 relations, there are $5!(\frac{8!}{(5! \cdot 4!)})=1,680$ alternatives.
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+\begin{frame}
+How many \textbf{actual} plans? 
+
+The space of possible plans considers, \underline{for every single one} of the 120 ways of performing the 4-way join, \underline{all possible} \textbf{legal rewrites} of the query (i.e., pushing selections down or not?) and, for each rewrite, \underline{all possible} algorithms for each of the joins (nested-loop, hash-join, merge-join,...) and scans (table scan, index scan, if so, which one?).
+
+Considering all these plans would almost always take longer than executing a ``reasonable'' one.
+
+\vskip1em
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+\begin{frame}{Left Deep Plans}
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+Back to the $N=4$ case. 
+
+\vskip1em
+
+Among all 120 plans, only $4!=24$ are ``left-deep''
+\end{column}
+\begin{column}{0.3\textwidth}
+{\scalebox{1}{\usebox{\leftDeepTree}}}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+A ``left-deep'' binary tree is one in which all right children are leaves.
+
+There are two main advantages of restricting the search to left-deep plans:
+\begin{enumerate}[(1),topsep=-0.5em,noitemsep]
+\item The search space is much smaller.
+\item These plans work well in the pipeline fashion of the iterator-style query answering.
+\end{enumerate}
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+\begin{frame}[fragile]
+\label{worked_example}
+\textbf{Worked example:} Finding the best left-deep plan based on estimated cost.
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.4\textwidth}
+$R(a,b,c)$ \qquad $S(c,d,e)$\\
+ $T(b,f,g)$ 
+
+\vskip2em
+
+\begin{lstlisting}[style=SQL]
+SELECT *
+FROM R JOIN S 
+   JOIN T JOIN  U
+WHERE f > 10
+\end{lstlisting}
+\end{column}
+\small
+\begin{column}{0.6\textwidth}
+\begin{tabular}{c|r|rrr}
+& $T(\cdot)$ & \multicolumn{3}{c}{$V(\cdot,\cdot)$}\\
+\hline
+\multirow{2}{*}{$R$} & \multirow{2}{*}{10,000} & $a$ & $b$ & $c$\\
+& & 500 & 1000 & 500 \\
+\hline
+\multirow{2}{*}{$S$} & \multirow{2}{*}{20,000} & $c$ & $d$ & $e$\\
+& & 2,000 & 200 & 250 \\
+\hline
+\multirow{2}{*}{$T$} & \multirow{2}{*}{3,000} & $b$ & $f$ & $g$\\
+& & 1,500 & 20 & 2 \\
+\hline
+\end{tabular}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+Assume:
+
+\begin{itemize}[-,noitemsep,topsep=-5pt]
+ \item $s(f > 10, T) = 0.01$
+\item $\MIN(f, T) = -20$
+\item $\MAX(f, T) = 20$
+\end{itemize} 
+
+\end{frame}
+
+\def\selectionPlan#1#2{
+	\begin{tikzpicture}[node distance=0.75cm,every node/.style={inner sep=1,outer sep=1,font=\scriptsize}]
+	\node (0) {#1};
+	\node (1) [below of= 0] {#2};
+	\path[->] (1) edge (0);
+	\end{tikzpicture}
+}
+
+\def\twoRelationLDPlan#1#2{
+	\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\scriptsize}]
+	\node (0) {$\Join$};
+	\node (1) [below left= of 0,xshift=5pt] {$#1$};
+	\node (2) [below right= of 0,xshift=-5pt] {$#2$};
+    \path[->]
+        (1) edge (0)
+        (2) edge (0);
+	\end{tikzpicture}
+}
+
+
+\def\threeRelationLDPlan#1#2#3{
+	\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\scriptsize}]
+	\node (0) {$\Join$};
+	\node (1) [below left= of 0,xshift=5pt] {$\Join$};
+	\node (2) [below left= of 1,xshift=5pt] {$#1$};
+	\node (3) [below right= of 1,xshift=-5pt] {$#2$};
+	\node (4) [below right= of 0,xshift=-5pt] {$#3$};
+    \path[->]
+        (1) edge (0)
+        (2) edge (1)
+        (3) edge (1)
+        (4) edge (0);
+	\end{tikzpicture}
+}
+
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+
+\textbf{All} plans of size 1 (i.e., with a single node) are table scans:
+
+\begin{tabular}{r@{\hspace*{2em}}rr}
+$Q= R$ & $T(Q) = 10K$ & $\mathit{cost}(Q) = 10K$ \\
+$Q= S$ & $T(Q) = 20K$ & $\mathit{cost}(Q) = 20K$ \\
+$Q= T$ & $T(Q) = 3K$ & $\mathit{cost}(Q) = 3K$ \\
+\end{tabular}
+
+The nodes $\Join$, $\Join$, and $\sigma_{f>10}$ cannot be used alone and thus cannot be part of a single-node plan 
+
+
+\vskip3em
+
+There is \textbf{only one} valid plan of size 2:
+
+\begin{tabular}{r@{\hspace*{2em}}rr}
+ $Q=$ \selectionPlan{$\sigma_{f>10}$}{$T$} & $T(Q)=3K \cdot 0.01 = 30$ & $\mathit{cost}(Q) = 3.03K$
+\end{tabular}
+
+\alert{NOTE:} $V(\sigma_{f>10}(T), b) = 30$, although the original table had a lot more distinct values of $b$ (recall slide~\ref{worked_example}).
+
+\end{frame}
+
+\begin{frame}
+
+Now, plans with a \textbf{single join}, starting with those of size 3:
+
+\begin{tabular}{r@{\hspace*{2em}}rr}
+ $Q=$ \twoRelationLDPlan{S}{R} & $T(Q) = \frac{10K \cdot 20K}{\max(500,2K)}=100K$ & $\mathit{cost}(Q) = 130K$ \\
+ $Q=$ \twoRelationLDPlan{R}{T} & $T(Q) = \frac{10K \cdot 3K}{\max(1K,1.5K)}=20K$ & $\mathit{cost}(Q) = 33K$ \\
+ $Q=$ \twoRelationLDPlan{S}{T} & $T(Q) = 20K\cdot3K =60M$ & $\mathit{cost}(Q) = 60.023M$ \\
+\end{tabular}
+
+\vskip2em
+
+\alert{NOTE:} query plan \twoRelationLDPlan{S}{T} has a high cost because it is a \emph{cross product}: there are no attributes common to $S$ and $T$.
+\begin{itemize}[-,topsep=-5pt]
+\item A modern optimizer will immediately prune that sub-plan as it cannot be better than any other plan.
+\end{itemize}
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+
+\def\joinSelectionLDplan#1{
+	\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\scriptsize}]
+	\node (0) {$\Join$};
+	\node (1) [below left= of 0,xshift=5pt] {$#1$};
+	\node (2) [below right= of 0,xshift=-5pt] {$\sigma_{f>10}$};
+	\node (3) [below of= 2, yshift=-0.35cm] {$T$};
+    \path[->]
+        (1) edge (0)
+        (2) edge (0)
+        (3) edge (2);
+	\end{tikzpicture}
+}
+
+\def\selectionJoinLDplan#1{
+	\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\scriptsize}]
+	\node (0) {$\sigma_{f>10}$};
+	\node (1) [below of= 0, yshift=-0.35cm] {$\Join$};
+	\node (2) [below left= of 1,xshift=5pt] {$#1$};
+	\node (3) [below right= of 1,xshift=-5pt] {$T$};
+    \path[->]
+        (1) edge (0)
+        (2) edge (1)
+        (3) edge (1);
+	\end{tikzpicture}
+}
+
+
+\begin{frame}
+
+Now, plans of size 4 (single-join with $T$ and $\sigma_{f>10}$).
+
+We will ignore the plans involving the cross product $S\Join T$, and consider the only two plans involving $R$ and $T$:
+
+\vskip2em
+
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.3\textwidth}
+$Q = $ \joinSelectionLDplan{R}
+\end{column}
+\begin{column}{0.3\textwidth}
+\begin{align*}
+T(Q) = \frac{10K\cdot 30}{\max(1K,30)} = 300\\
+\mathit{cost}(Q) = 300 + 10K + 3.03K = \alert{13.33K}
+\end{align*}
+\end{column}
+\end{columns}
+
+\vskip2em
+
+For the next one, we re-use the work done for plans of size 3.
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.3\textwidth}
+$Q = $ \selectionJoinLDplan{R}
+\end{column}
+\begin{column}{0.3\textwidth}
+\begin{align*}
+T(Q) = 20K\cdot 0.01 = 200\\
+\mathit{cost}(Q) = 200 + 33K = 33.2K
+\end{align*}
+\end{column}
+\end{columns}
+
+
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+\vskip1em
+
+Now for plans of size 5, which would be the best plans of size 3 plus another join (and another table).
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.3\textwidth}
+$Q = $ \threeRelationLDPlan{S}{R}{T} 
+\end{column}
+\begin{column}{0.3\textwidth}
+\begin{align*}
+ T(Q) &= \frac{T(R,S,\Join)T(T)}{\max(V(b,R\Join S),V(b,T))}\\
+&=\frac{100K\cdot 3K}{\max(1K, 1.5K)}=200K\\
+\mathit{cost(Q)} &= 200K + 130K + 3K = 363K
+\end{align*}
+\end{column}
+\end{columns}
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.3\textwidth}
+$Q = $ \threeRelationLDPlan{R}{T}{S} 
+\end{column}
+\begin{column}{0.3\textwidth}
+\begin{align*}
+T(Q) &= \frac{20K \cdot 20K}{\max(500,2K)} =200K\\
+\mathit{cost(Q)} &= 200K + 33K + 20K = \alert{253K}
+\end{align*}
+\end{column}
+\end{columns}
+
+
+\vskip2em
+
+Again, we ignore the plan with $S\Join T$.
+
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+
+
+\begin{frame}
+
+An now for plans of size 6, that will include all nodes.
+
+
+\vskip1em
+
+\textbf{Option 1:} add $\sigma_{f>10}$ to the \textbf{best} plan of size 5.
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.3\textwidth}
+$Q = $ 	\begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\scriptsize}]
+	\node (s) {$\sigma_{f>10}$};
+	\node (0) [below of=s, yshift=-0.25cm] {$\Join$};
+	\node (1) [below left= of 0,xshift=5pt] {$\Join$};
+	\node (2) [below left= of 1,xshift=5pt] {$R$};
+	\node (3) [below right= of 1,xshift=-5pt] {$T$};
+	\node (4) [below right= of 0,xshift=-5pt] {$S$};
+    \path[->]
+        (0) edge (s)
+        (1) edge (0)
+        (2) edge (1)
+        (3) edge (1)
+        (4) edge (0);
+	\end{tikzpicture}
+\end{column}
+
+\begin{column}{0.5\textwidth}
+\begin{align*}
+T(Q) & = 200K \cdot 0.01 = 20K\\
+\mathit{cost}{Q} & = 20K + 253K = 273K
+\end{align*}
+\end{column}
+\end{columns}
+
+
+\vskip2em
+
+\textbf{Option 2:} join $S$ to the \textbf{best} plan of size 4.
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.3\textwidth}
+$Q = $ \begin{tikzpicture}[node distance=0.25cm,every node/.style={inner sep=1,outer sep=1,font=\scriptsize}]
+	\node (j) {$\Join$};
+	\node (0) [below left= of j,xshift=5pt]{$\Join$};
+	\node (5) [below right= of j,xshift=-5pt] {$S$};
+	\node (1) [below left= of 0,xshift=5pt] {$R$};
+	\node (2) [below right= of 0,xshift=-5pt] {$\sigma_{f>10}$};
+	\node (3) [below of= 2, yshift=-0.35cm] {$T$};
+    \path[->]
+        (0) edge (j)
+        (5) edge (j)
+        (1) edge (0)
+        (2) edge (0)
+        (3) edge (2);
+	\end{tikzpicture}
+\end{column}
+
+\begin{column}{0.5\textwidth}
+\begin{align*}
+T(Q) & = \frac{300\cdot 20K}{\max(500,2K)} = 3K\\
+\mathit{cost}{Q} & = 3K + 13.33K + 20K = \alert{36.33K}
+\end{align*}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+\blue{And we are done!}
+\end{frame}
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+\begin{frame}{Notes}
+
+The Sellinger optimizer can handle all operators in a SQL query, choosing the best place for each operator.
+
+\begin{enumerate}[(1)]
+\item Note that it ``figured out'' that pushing selections down the tree is the right thing to do. Although we would save more time by always pruning plans with ``high'' selections.
+
+\item However, even with aggressive pruning, Dynamic programming is too expensive to be practical.
+\begin{itemize}[-,noitemsep,topsep=-5pt]
+
+\item Commercial optimizers often use many heuristics and avoid enumerating all plans as we did here. 
+\end{itemize}
+
+\item Machine learning can help by providing better cost estimates and also by helping solve the optimization problem.
+
+\end{enumerate}
+\end{frame}

@@ -1,0 +1,247 @@
+%
+% Fonts
+%
+% \usepackage{amsmath}
+% \usepackage{mathspec}
+% \setmathtt[Scale=0.875]{Cousine}
+
+%
+% various packages for tables and colored tables
+%
+\usepackage{xcolor,colortbl}
+\usepackage{tcolorbox}
+
+\definecolor{accent}{RGB}{225,68,85}
+\definecolor{highlight}{RGB}{170,68,153}
+\definecolor{background}{rgb}{253,252,252}
+
+\definecolor{sqlColor}{RGB}{119,119,17}
+
+\definecolor{Cfunction}{RGB}{51,51,153}
+
+\definecolor{stringColor}{RGB}{51,51,153}
+\definecolor{datatypeColor}{RGB}{170,68,153}
+\definecolor{functionColor}{RGB}{51,134,116}
+
+\definecolor{exampleColor}{RGB}{51,34,136}
+\definecolor{commentColor}{RGB}{112,68,225}
+
+\definecolor{fern}{RGB}{80,118,66}
+
+\definecolor{snow}{RGB}{240,240,230}
+\definecolor{Gray}{gray}{0.85}
+
+\definecolor{tupleBoxColor}{gray}{0.85}
+
+\definecolor{Maroon}{RGB}{139,0,0}
+
+%
+% coloring of SQL code
+%
+\def\ColorSymbol#1{\textcolor{functionColor}{#1}}
+
+%
+% hihglight box
+%
+\usepackage{xspace}
+\def\highlight#1{\colorbox{accent}{\textcolor{white}{#1}}\xspace}
+
+%
+% Tables
+%
+\usepackage{multirow}
+\usepackage{multicol}
+
+%
+% CODE LISTINGS
+%
+\usepackage{listings}
+
+%
+% catch-all style meant to provide a clean and "empty" style
+% from which all others build upon
+%
+\lstdefinestyle{cmput391}{
+  style=,
+  frame=no,
+  tabsize=2,
+  numbers=none,
+  showstringspaces=false,
+  numberstyle=\footnotesize,
+  basicstyle=\ttfamily\footnotesize\color{black},
+  numbersep=4pt,
+  keywords=[1]{},
+  keywords=[2]{},
+  keywords=[3]{sh_lock,xl_lock,unlock,read,write,commit,abort},
+  keywordstyle=[1]\ttfamily\bfseries\footnotesize,
+  keywordstyle=[2]\ttfamily\footnotesize,
+  keywordstyle=[3]\ttfamily\footnotesize\color{Maroon},
+  emph=[1]{},
+  emph=[2]{},
+  emph=[3]{},
+  emphstyle=[1]\ttfamily\footnotesize,
+  emphstyle=[2]\ttfamily\footnotesize,
+  emphstyle=[3]\ttfamily\footnotesize,
+  commentstyle=\ttfamily\itshape\color{commentColor},
+  stringstyle=\ttfamily\color{stringColor},
+  moredelim=**[l][\itshape\color{commentColor}]{--},
+  moredelim=**[is][\color{highlight}]{-|}{|-},
+  moredelim=[is][\bfseries\color{highlight}]{-:}{:-},
+  morestring=[s][\color{stringColor}]{"}{"},
+  morecomment=[l]{--}
+}
+
+\lstdefinelanguage{DTD}{
+  style=cmput391,
+  morekeywords=[1]{DOCTYPE,ELEMENT,ATTLIST},
+  keywordstyle=[1]\color{accent},
+  literate = {\#PCDATA}{{\textcolor{Cfunction}{\#PCDATA}}}7
+             {\#IMPLIED}{{\textcolor{Cfunction}{\#IMPLIED}}}8
+}
+
+\lstdefinelanguage{XPath}{
+  style=cmput391,
+  morekeywords={xs,integer,current,date,distinct,values,avg,text,id,count,position,and,or,not,boolean,number,sum,floor,ceiling,round,doc,eq,ne,gt,lt,ge,le},
+  keywordstyle=\color{red},
+  literate = {last(}{{\textcolor{functionColor}{last}(}}5 {@<}{{<}}1  
+}
+
+\lstdefinestyle{XQuery}{
+  style=cmput391,
+  keywords=[1]{if,then,else,and,or,some,every,satisfies,for,in,let,where,group,order,by,return,ascending},
+  keywords=[2]{gt,lt,eq,ne,ge,le,not,or},
+  keywords=[3]{text,sum,min,max,avg,len,position,number,boolean,floor,ceiling,round,%
+               id,doc,count,current-date,distinct-values,xs:integer,subsequence},
+  keywordstyle=[1]\bfseries\color{sqlColor},
+  keywordstyle=[2]\color{accent},
+  keywordstyle=[3]\color{functionColor},
+  moredelim =[is][\color{blue}]{-:}{:-},
+  moredelim =[s][\color{accent}]{<}{>},
+  moredelim=**[s][\color{black}]{/}{\ },
+  moredelim=*[s][\color{blue}]{\$}{\ },
+  alsoletter=:{:,-},
+  literate = {(}{{\textcolor{black}{(}}}{1} {)}{{\textcolor{black}{)}}}{1} 
+             {\{}{{\textcolor{black}{\{}}}{1} {\}}{{\textcolor{black}{\}}}}{1} 
+             {last(}{{\textcolor{functionColor}{last}(}}5 {@<}{{<}}1
+}
+
+
+\lstdefinestyle{SQL}{
+  style=cmput391,
+  language=SQL,
+  sensitive={True},
+  deletekeywords={year,Cast,MIN,MAX},
+  morekeywords={ABORT,AFTER,BEFORE,REFERENCES,REFERENCING,WITH,COMMITTED,UNCOMMITTED,REPEATABLE,SERIALIZABLE},
+  keywords=[2]{AVG,MIN,MAX,COUNT,SUM,NEW,OLD,strftime,date,length,RAISE,rowid,substr},
+  keywords=[3]{BIGINT,CHAR,DATE,DECIMAL,INT,FLOAT,TEXT},
+  keywordstyle=[1]\ttfamily\bfseries\color{sqlColor},
+  keywordstyle=[2]\ttfamily\bfseries\color{functionColor},
+  keywordstyle=[3]\ttfamily\bfseries\color{datatypeColor},
+  moredelim=**[is][\ttfamily\bfseries\color{functionColor}]{(@}{@)},
+  morestring=[s][\color{stringColor}]{'}{'},
+  moredelim=[is][\bfseries\color{highlight}]{-:}{:-}
+}
+
+
+%
+% lstlisting for command line examples
+%
+\lstdefinestyle{commandLine}{
+  basicstyle=cmput391,
+  keywordstyle=[1]\ttfamily\bfseries\color{functionColor},
+  keywordstyle=[2]\ttfamily\bfseries\color{datatypeColor},
+  moredelim=**[is][\color{accent}\bf]{@}{@}
+  keywords=[1]{%
+    grep},
+  keywords=[2]{%
+    postings}
+}
+
+%
+% lstlisting for C code
+%
+\lstdefinestyle{C}{
+  language=C,
+  tabsize=2,
+  basicstyle=\ttfamily\footnotesize,
+  stringstyle=\color{stringColor},
+  keywords=[2]{sqlite3_prepare_v2,sqlite3_bind_int64,sqlite3_step,sqlite3_exec},
+  keywordstyle=[1]\ttfamily\bfseries\color{datatypeColor},
+  keywordstyle=[2]\ttfamily\bfseries\color{functionColor},
+  commentstyle=\ttfamily\itshape\color{commentColor},
+  moredelim=**[is][\color{Cfunction}\bf\ttfamily]{@}{@}
+}
+
+
+\lstdefinestyle{Python}{
+  language=Python,
+  tabsize=2,
+  basicstyle=\ttfamily\footnotesize,
+  stringstyle=\color{stringColor},
+  morekeywords=[1]{self,yield,Class,true,false,None},
+  keywords=[2]{satisfies,from,Iterator,EOF,concatenate,advance,join,rewind},
+  deletekeywords=[1]{from},
+  keywordstyle=[1]\ttfamily\bfseries\color{datatypeColor},
+  keywordstyle=[2]\ttfamily\bfseries\color{functionColor},
+  commentstyle=\ttfamily\itshape\color{commentColor},
+  moredelim=**[is][\color{Cfunction}\bf\ttfamily]{@}{@}
+}
+
+
+
+%
+% lstlisting style for RDF/SPARQL
+%
+\lstdefinestyle{SPARQL}{
+  style=cmput391,
+  sensitive={True},
+  keywords=[1]{BASE,PREFIX,SELECT,WHERE,FILTER,MINUS,NOT,EXISTS},
+  keywordstyle=[1]\ttfamily\bfseries\color{sqlColor},
+  moredelim=*[s][\color{Cfunction}]{?}{\ },
+  moredelim=*[s][\color{Cfunction}]{@}{\ },
+  morestring=[s][\color{datatypeColor}]{"}{"},
+  literate =* {|}{{|}}1 {//}{{//}}2 {< }{< }{2}
+}
+
+%
+% coloring of markup code
+%
+\lstdefinestyle{markup}{
+  style=cmput391,
+  literate =* {=}{{\color{sqlColor}{=}}}1,
+  moredelim =* [s][\color{accent}]{<}{>},
+  moredelim =** [is][\color{accent}]{@}{@},
+  moredelim =** [is][\color{blue}]{-:}{:-},
+  morecomment=[s]{<!--}{-->}
+}
+
+\lstdefinestyle{RDF}{
+  style=cmput391,
+  keywords=[1]{BASE,PREFIX},
+  keywordstyle=[1]\ttfamily\bfseries\color{functionColor},
+  alsoletter=:{:,-,@},
+  literate = {prefix}{{\bfseries\textcolor{functionColor}{prefix}}}6 
+             {:}{{\textcolor{functionColor}{:}}}1 
+             {@}{{\textcolor{functionColor}{@}}}1,
+  moredelim =* [s][\color{accent}]{<}{>},
+  moredelim =** [is][\color{functionColor}]{-:}{:-},
+  morecomment=[s]{<!--}{-->}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

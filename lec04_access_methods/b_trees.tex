@@ -1,0 +1,942 @@
+%!TEX root = ./lec04_access_methods.tex
+
+\input{macros/btree_macros}
+\newsavebox\IIIlevelBtreeExample
+\savebox{\IIIlevelBtreeExample}{
+\begin{tikzpicture}
+% root node
+\btreeNode{root}{0}{0};
+\innerNodeKey{root}{0}{17};
+% left child of root
+\btreeNode{inner0}{-3}{-2.5};
+\innerNodeKey{inner0}{0}{7};
+% right child of root
+\btreeNode{inner1}{3}{-2.5};
+\innerNodeKey{inner1}{0}{29};\innerNodeKey{inner1}{1}{41};
+%
+% leaf nodes from left to right
+%
+\btreeNode{leaf0}{-6}{-5};
+\leafNodeKey{leaf0}{0}{3};\leafNodeKey{leaf0}{1}{5};
+
+\btreeNode{leaf1}{-3}{-5};
+\leafNodeKey{leaf1}{0}{7};\leafNodeKey{leaf1}{1}{11};\leafNodeKey{leaf1}{2}{13};
+
+\btreeNode{leaf2}{0}{-5};
+\leafNodeKey{leaf2}{0}{17};\leafNodeKey{leaf2}{1}{23};
+
+\btreeNode{leaf3}{3}{-5};
+\leafNodeKey{leaf3}{0}{29};\leafNodeKey{leaf3}{1}{31};\leafNodeKey{leaf3}{2}{37};
+
+\btreeNode{leaf4}{6}{-5};
+\leafNodeKey{leaf4}{0}{41};\leafNodeKey{leaf4}{1}{43};
+
+% chain at leaf level
+\chainLink{leaf0}{leaf1};\chainLink{leaf1}{leaf2};
+\chainLink{leaf2}{leaf3};\chainLink{leaf3}{leaf4};
+
+% links between inner nodes
+\parentChildLink{root}{0}{inner0};\parentChildLink{root}{1}{inner1};
+
+\parentChildLink{inner0}{0}{leaf0};\parentChildLink{inner0}{1}{leaf1};
+
+\parentChildLink{inner1}{0}{leaf2};\parentChildLink{inner1}{1}{leaf3};\parentChildLink{inner1}{2}{leaf4};
+\end{tikzpicture}}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}{B+ tree}
+
+The \textbf{B+ tree} is a self-balancing search tree designed for secondary memory: \alert{each node of the tree is stored on a separate disk block}.
+
+\begin{center}
+\scalebox{0.75}{\usebox{\IIIlevelBtreeExample}}
+\end{center}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+\begin{center}
+\framebox{\alert{Every node holds $n$ keys and $n+1$ pointers}}
+\end{center}
+
+\vskip1em
+
+In a leaf node:\\
+ - the first $n$ pointers point to \underline{actual tuples} in the data file\\
+ - the last pointer is used to form a \textbf{chain} of leaf nodes (useful for range queries)
+
+\vskip2em
+
+\begin{center}
+\begin{tikzpicture}
+\node at (0,0) [anchor=north west] {\scalebox{0.5}{\clipbox{0pt 0pt 0pt 110pt}{\usebox\IIIlevelBtreeExample}}};
+
+\pause
+
+\node (0) at (1.2,-1.15) [draw, color=red, rectangle, minimum width=1em, minimum height=1em] {};
+\node (1) at (2.7,-1.15) [draw, color=red, rectangle, minimum width=1em, minimum height=1em] {};
+\node (2) at (4.2,-1.15) [draw, color=red, rectangle, minimum width=1em, minimum height=1em] {};
+\node (3) at (5.7,-1.15) [draw, color=red, rectangle, minimum width=1em, minimum height=1em] {};
+
+\node (4) at (3,0.5) [color=red] {\small chain};
+\foreach \i in {0,...,3}{
+	\draw [->,color=red] (4) -- (\i);
+}
+
+\pause
+
+\node (5) at (0.5,-1.15) [draw, color=blue, rectangle, minimum width=2em, minimum height=1em] {};
+\node (6) at (2,-1.15) [draw, color=blue, rectangle, minimum width=2em, minimum height=1em] {};
+\node (7) at (3.5,-1.15) [draw, color=blue, rectangle, minimum width=2em, minimum height=1em] {};
+\node (8) at (5.1,-1.15) [draw, color=blue, rectangle, minimum width=2.5em, minimum height=1em] {};
+\node (9) at (6.5,-1.15) [draw, color=blue, rectangle, minimum width=2.2em, minimum height=1em] {};
+
+\node (10) at (3, -2.5) [color=blue] {to data file};
+\foreach \i in {5,...,9}{
+	\draw [->,color=blue] (10) -- (\i);
+}
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+\begin{center}
+\framebox{\alert{Every node holds $n$ keys and $n+1$ pointers}}
+\end{center}
+
+\vskip1em
+
+In an inner node with $i$ keys the first $i+1$ pointers are used.
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.55\textwidth}
+A \textbf{search} for key $j$ follows pointer:
+\end{column}
+\begin{column}{0.5\textwidth}
+\[
+\begin{cases}
+0 & \text{if~} j < k_0\\
+i & \text{if~} k_{i-1} \leq j < k_i\\
+i+1 & \text{if~} j \geq k_i
+\end{cases}
+\]
+\end{column}
+\end{columns}
+
+\vskip2em
+
+\begin{center}
+\begin{tikzpicture}
+\node at (0,0) [anchor=north west] {\scalebox{0.5}{\clipbox{165pt 0pt 0pt 50pt}{\usebox\IIIlevelBtreeExample}}};
+\pause
+
+\node (0) at (-0.75,-1) [color=red] {\footnotesize to keys $j<29$};
+\draw [->,color=red] (0) -- (1,-1.5);
+\pause
+
+\node (1) at (0,0.125) [color=orange] {\footnotesize to keys $29\leq j<41$};
+\draw [->,color=orange] (1) -- (2.3,-1.5);
+\pause
+
+\node (2) at (5,-1) [color=blue] {\footnotesize to keys $j\geq 41$};
+\draw [->,color=blue] (2) -- (3.75,-1.5);
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+\begin{center}
+\framebox{\alert{Every node holds $n$ keys and $n+1$ pointers}}
+\end{center}
+
+\vskip1em
+
+To avoid nodes becoming ``too empty'', the minimum \alert{occupancy} of a node should be:
+ 
+ - \textbf{inner node}: \(\ceil*{\frac{n+1}{2}}\) pointers
+ 
+ - \textbf{leaf node}: \(\floor*{\frac{n+1}{2}} + 1\) pointers (to data file)
+
+\vskip1em
+
+If the node occupancy goes below that (due to deletions), the node should be merged with adjacent ones\footnote{In practice, however, most DBMSs skip this and reclaim wasted space during re-indexing maintenance processes.}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Example:} occupancy with \qquad \framebox{$n=3$}
+
+\vskip2em
+
+\begin{center}
+\begin{tikzpicture}
+
+\btreeNode{innerFull}{0}{0};
+\innerNodeKey{innerFull}{0}{29};\innerNodeKey{innerFull}{1}{34};\innerNodeKey{innerFull}{2}{41};
+\coordinate (if0) at (-0.15,-1.75);\coordinate (if1) at (1,-1.75);
+\coordinate (if2) at (1.9,-1.75);\coordinate (if3) at (2.7,-1.75);
+\parentChildLink{innerFull}{0}{if0};\parentChildLink{innerFull}{1}{if1};
+\parentChildLink{innerFull}{2}{if2};\parentChildLink{innerFull}{3}{if3};
+
+\btreeNode{innerMin}{4}{0};
+\innerNodeKey{innerMin}{0}{17};
+\coordinate (im0) at (3.85,-1.75);\coordinate (im1) at (5.25,-1.75);
+\parentChildLink{innerMin}{0}{im0};\parentChildLink{innerMin}{1}{im1};
+
+\btreeNode{leafFull}{0}{-3};
+\leafNodeKey{leafFull}{0}{29};\leafNodeKey{leafFull}{1}{31};\leafNodeKey{leafFull}{2}{37};
+\coordinate (lf0) at (2.9,-3.5);\chainLink{leafFull}{lf0};
+
+\btreeNode{leafMin}{4}{-3};
+\leafNodeKey{leafMin}{0}{39};
+\leafNodeKey{leafMin}{1}{43};
+\coordinate (lm0) at (6.9,-3.5);\chainLink{leafMin}{lm0};
+
+\node (0) [left= 2em of innerFull] {Inner : };
+\node (1) [left= 2em of leafFull] {Leaf : };
+\node (2) [above= 2em of innerFull] {Full node};
+\node (3) [above= 2em of innerMin] {Minimum occupancy};
+
+\node (4) at (6,-5)  [color=red] {\begin{minipage}{2cm}\scriptsize\baselineskip=0.75\baselineskip plus 1fill\centering
+ ``chain'' pointers count EVEN IF THEY ARE SET TO NULL\end{minipage}};
+\draw[->,color=red] (4) -- (6.25,-4);
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}{B+ trees are balanced}
+
+\begin{center}
+\begin{tikzpicture}
+\node (tree) {\scalebox{0.5}{\usebox{\IIIlevelBtreeExample}}};
+\node (0) [left=2em of tree.north west,yshift=-10pt] {level 0};
+\node (1) [below=2em of 0,yshift=-2pt] {level 1};
+\node (2) [below=2em of 1,yshift=-1pt] {level 2};
+\end{tikzpicture}
+\end{center}
+
+The \alert{level of a node} is its distance (in edges) from the root.
+
+The \alert{height of the tree} is the maximum level of any node.
+
+\vskip1em
+
+In a B+ tree \textbf{all leaves are at the same level.}
+
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}{Root nodes are special}
+
+Often, real B+ tree nodes (i.e., disk blocks) hold a few hundred pointers. Thus, until there are more than that many keys in the index, the ``entire tree'' is just one (root \emph{and} also leaf) node.
+
+\vskip1em
+
+\begin{center}
+\small
+\begin{tabular}{c||c|c||c|c}
+& \multicolumn{2}{c||}{\textbf{minimum}} & \multicolumn{2}{c}{\textbf{maximum}}\\
+\cline{2-5}
+& pointers & keys & pointers & keys \\
+\hline
+Inner & \multirow{2}{*}{$\ceil*{\frac{(n+1)}{2}}$} & \multirow{2}{*}{$\ceil*{\frac{(n+1)}{2}} - 1$} & \multirow{2}{*}{$n+1$} & \multirow{2}{*}{$n$} \\
+(non-root) & & & & \\
+\hline
+Leaf & \multirow{2}{*}{$\floor*{\frac{(n+1)}{2}} + 1$} & \multirow{2}{*}{$\floor*{\frac{(n+1)}{2}}$} & \multirow{2}{*}{$n+1$} & \multirow{2}{*}{$n$} \\
+(non-root) & & & & \\
+\hline
+Root & \alert{2} & 1 & $n+1$ & $n$\\
+\end{tabular}
+\end{center}
+
+\textbf{\alert{NOTE}} when the tree is just the root node the minimum number of pointers is 1.
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}{Inserting a new key into a B+ tree}
+
+B+ tree insertions are \underline{very similar} insertions into binary search trees: (1) find where the new key should go; (2) add the new key; (3) modify other nodes as needed.
+
+\small
+\begin{enumerate}[label=(\arabic*)]
+\item \textbf{Search} for key \alert{$K$} in the tree; that is, traverse the tree from the root until we locate the leaf node \alert{$l_i$} where \alert{$K$} should go.
+
+\item If there is space in \alert{$l_i$}, add key \alert{$K$}; \highlight{STOP}. Otherwise:
+\begin{enumerate}[label=(\alph*)]
+\item create a new leaf \alert{$l_{\text{new}}$} with \alert{$K$};
+\item divide the keys in \alert{$l_i$} among \alert{$l_i$} and \alert{$l_{\text{new}}$} so that both satisfy the minimum occupancy requirement; 
+% \item if \alert{$K$} ``splits'' the keys in \alert{$l_i$}, move the \textbf{fewest number of keys} from \alert{$l_i$} to \alert{$l_{\text{new}}$}; \underline{otherwise}, leave \alert{$K$} alone in \alert{$l_{\text{new}}$};
+\end{enumerate}
+\item link \alert{$l_{\text{new}}$} to \alert{$l_i$} and to its \underline{predecessor} or \underline{successor}; link \alert{$l_{\text{new}}$} to the parent of \alert{$l_i$} \textbf{recursively} inserting a new key in the parent.
+\item If needed, recursively add and link parents nodes.
+\end{enumerate}
+\end{frame}
+
+\normalsize
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+\textbf{Example}: insertion when there is room in \alert{$l_i$}
+
+\vskip1em
+
+\begin{center}
+Insert key \alert{\textbf{$K=6$}} \qquad \framebox{$n=3$}
+
+\vskip1em
+
+\scalebox{0.6}{\begin{tikzpicture}
+\btreeNode{root}{0}{0};
+\innerNodeKey{root}{0}{17};
+\btreeNode{inner0}{-3}{-2.5};
+\innerNodeKey{inner0}{0}{7};
+\coordinate (inner1) at (3,-2.5);
+\btreeNode{leaf0}{-6}{-5};
+\leafNodeKey{leaf0}{0}{3};\leafNodeKey{leaf0}{1}{5};
+\btreeNode{leaf1}{-3}{-5};
+\leafNodeKey{leaf1}{0}{7};\leafNodeKey{leaf1}{1}{11};\leafNodeKey{leaf1}{2}{13};
+\chainLink{leaf0}{leaf1};\chainLink{leaf1}{leaf2};
+\parentChildLink{root}{0}{inner0};\parentChildLink{root}{1}{inner1};
+\parentChildLink{inner0}{0}{leaf0};\parentChildLink{inner0}{1}{leaf1};
+
+%before update
+\only<1|handout:1>{
+	\LABELparentChildLink{root}{0}{inner0}{$K < 17$};
+	\LABELparentChildLink{inner0}{0}{leaf0}{$K < 7$};
+	\node (li) at (-6,-4) {\alert{$l_i$}};
+	\draw [->,thick,color=accent] (li) -- (leaf0);
+}
+
+%after update
+\only<2|handout:1>{
+	\leafNodeKey{leaf0}{2}{\alert{\textbf{6}}};
+}
+\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Example}: insertion causing a node split ``to the left'' of \alert{$l_i$}
+
+\vskip1em
+
+\begin{center}
+Insert key \alert{$K=4$} \qquad \framebox{$n=3$}
+\vskip1em
+
+\scalebox{0.6}{\begin{tikzpicture}
+\btreeNode{root}{0}{0};
+\innerNodeKey{root}{0}{17};
+\btreeNode{inner0}{-3.75}{-2.5};
+\coordinate (inner1) at (3,-2.5);
+\parentChildLink{root}{0}{inner0};\parentChildLink{root}{1}{inner1};
+\btreeNode{leaf0}{-6}{-5};
+\btreeNode{leaf1}{-3}{-5};\leafNodeKey{leaf1}{0}{7};
+\leafNodeKey{leaf1}{1}{11};\leafNodeKey{leaf1}{2}{13};
+\chainLink{leaf0}{leaf1};\chainLink{leaf1}{leaf2};
+
+% before update
+\only<1-2|handout:0>{
+	\parentChildLink{inner0}{0}{leaf0};\parentChildLink{inner0}{1}{leaf1};
+	\innerNodeKey{inner0}{0}{7};
+}
+
+\only<1|handout:0>{
+	\leafNodeKey{leaf0}{0}{3};\leafNodeKey{leaf0}{1}{5};\leafNodeKey{leaf0}{2}{6};
+	\LABELparentChildLink{root}{0}{inner0}{$K < 17$};
+	\LABELparentChildLink{inner0}{0}{leaf0}{$K < 7$};
+}
+
+\only<1-3|handout:1>{
+	\node (li) at (-6.5,-3.5) {\large\alert{$l_i$}};
+	\draw [->,thick,color=accent] (li) -- (leaf0);
+}
+
+% after update
+\only<2-3|handout:1>{
+	\btreeNode{newLeaf}{-9}{-5};\leafNodeKey{newLeaf}{0}{3};\leafNodeKey{newLeaf}{1}{\alert{\textbf{4}}};
+	\leafNodeKey{leaf0}{0}{5};\leafNodeKey{leaf0}{1}{6};
+	\chainLink{newLeaf}{leaf0};
+}
+
+\only<2-3|handout:1>{
+	\node (lnew) at (-9,-3.5) {\large\alert{$l_\text{new}$}};
+	\draw [->,thick,color=accent] (lnew) -- (newLeaf);
+	\node (0) at (-6,-1.5) [color=blue] {update parent};
+	\draw [->,thick,color=blue] (0) -- (inner0);	
+}
+
+% reveal the smallest key in the inner in the last step
+\only<3|handout:1>{
+	\innerNodeKey{inner0}{0}{\textcolor{red}{5}};\innerNodeKey{inner0}{1}{7};
+	\parentChildLink{inner0}{0}{newLeaf};\parentChildLink{inner0}{1}{leaf0};\parentChildLink{inner0}{2}{leaf1};
+}
+\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Example}: insertion causing a node split ``to the right'' of \alert{$l_i$}
+
+\vskip1em 
+
+\begin{center}
+
+Insert key \alert{$K=32$}; \only<4|handout:2>{and then insert key \alert{$K=47$};} \qquad \framebox{$n=3$}
+
+\vskip1em
+
+\scalebox{0.6}{\begin{tikzpicture}
+\btreeNode{root}{1.5}{0};
+\innerNodeKey{root}{0}{17};
+\coordinate (inner0) at (1,-2.5);
+\btreeNode{inner1}{4.5}{-2.5};
+\innerNodeKey{inner1}{0}{29};
+\parentChildLink{root}{0}{inner0};\parentChildLink{root}{1}{inner1};
+\btreeNode{leaf2}{0}{-5};
+\leafNodeKey{leaf2}{0}{17};\leafNodeKey{leaf2}{1}{23};
+\btreeNode{leaf3}{3}{-5};
+\leafNodeKey{leaf3}{0}{29};\leafNodeKey{leaf3}{1}{31};
+\btreeNode{leaf4}{9}{-5};
+\leafNodeKey{leaf4}{0}{41};\leafNodeKey{leaf4}{1}{43};
+\parentChildLink{inner1}{0}{leaf2};
+\chainLink{leaf2}{leaf3};\parentChildLink{inner1}{1}{leaf3};
+
+% before update
+\only<1|handout:1>{
+	\leafNodeKey{leaf3}{2}{37};
+	\chainLink{leaf3}{leaf4};
+\	\LABELparentChildLink{root}{1}{inner1}{$K > 17$};
+	\LABELparentChildLink{inner1}{1}{leaf3}{$29 \leq K < 41$};
+};
+
+\only<1-2|handout:1>{
+	\innerNodeKey{inner1}{1}{41};
+	\parentChildLink{inner1}{2}{leaf4};
+	\node (li) [above left=3em and 2em of leaf3] {\alert{$l_i$}};
+	\draw [->,thick,color=accent] (li) -- (leaf3);
+}
+
+\only<2-4|handout:2>{
+	\btreeNode{newLeaf}{6}{-5};
+	\leafNodeKey{newLeaf}{0}{\alert{32}};\leafNodeKey{newLeaf}{1}{37};
+	\chainLink{leaf3}{newLeaf};\chainLink{newLeaf}{leaf4};
+};
+
+\only<2|handout:2>{
+	\node (0) [above right=1em and 2em of inner1,color = blue] {update parent};
+	\draw [->,thick,color=blue] (0) -- (inner1);
+	\node (lnew) [above right=3em and 2em of newLeaf] {\alert{$l_\text{new}$}};
+	\draw [->,thick,color=accent] (lnew) -- (newLeaf);
+}
+
+\only<3-4|handout:2>{
+	\innerNodeKey{inner1}{1}{\textcolor{red}{32}};\innerNodeKey{inner1}{2}{\textcolor{red}{41}};
+	\parentChildLink{inner1}{2}{newLeaf};\parentChildLink{inner1}{3}{leaf4};
+}
+% after update with 47
+\only<4|handout:2>{\leafNodeKey{leaf4}{2}{\alert{47}};};
+\end{tikzpicture}}
+\end{center}
+
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+Insertion leading to \textbf{adding a new parent}:
+
+\vskip1em
+
+\begin{center}
+
+Insert key \alert{$K=53$} \qquad \framebox{$n=3$}
+
+\vskip1em
+
+\scalebox{0.6}{\begin{tikzpicture}
+\btreeNode{root}{3.5}{0};
+\innerNodeKey{root}{0}{17};
+\coordinate (inner0) at (1,-2.5);
+\btreeNode{inner1}{4.5}{-2.5};
+\innerNodeKey{inner1}{0}{29};\innerNodeKey{inner1}{1}{32};
+
+\btreeNode{leaf2}{0}{-5};
+\leafNodeKey{leaf2}{0}{17};\leafNodeKey{leaf2}{1}{23};
+
+\btreeNode{leaf3}{3}{-5};
+\leafNodeKey{leaf3}{0}{29};\leafNodeKey{leaf3}{1}{31};
+
+\btreeNode{leaf4}{6}{-5};
+\leafNodeKey{leaf4}{0}{32};\leafNodeKey{leaf4}{1}{37};
+
+\btreeNode{leaf5}{9}{-5};
+\leafNodeKey{leaf5}{0}{41};\leafNodeKey{leaf5}{1}{43};
+
+\parentChildLink{root}{0}{inner0};\parentChildLink{root}{1}{inner1};
+\parentChildLink{inner1}{0}{leaf2};\parentChildLink{inner1}{1}{leaf3};
+\parentChildLink{inner1}{2}{leaf4};
+
+\chainLink{leaf2}{leaf3};\chainLink{leaf3}{leaf4};\chainLink{leaf4}{leaf5};
+
+% before update
+\only<1-3|handout:1>{
+	\innerNodeKey{inner1}{2}{41};\parentChildLink{inner1}{3}{leaf5};
+	\node (li) [above right= 3em and 0.025em of leaf5] {\alert{$l_i$}};
+	\draw [->,thick,color=accent] (li) -- (leaf5);
+}
+
+\only<1|handout:0>{
+	\leafNodeKey{leaf5}{2}{47};
+}
+
+\only<1|handout:1>{
+	\LABELparentChildLink{root}{1}{inner1}{$K > 17$};
+	\LABELparentChildLink{inner1}{3}{leaf5}{$K > 41$};
+}
+
+\only<2|handout:1>{
+	\node (0) [above right=1em and 2em of inner1,color = blue] {update parent?};
+	\draw [->,thick,color=blue] (0) -- (inner1);
+}
+
+\only<2-5|handout:1-2>{
+	\btreeNode{newLeaf}{12}{-5};
+	\leafNodeKey{newLeaf}{0}{\textcolor{red}{47}};
+	\leafNodeKey{newLeaf}{1}{\alert{53}};
+	\chainLink{leaf5}{newLeaf};
+}
+
+\only<2-3|handout:1>{
+	\node (lnew) [above right= 3em and 0.025em of newLeaf] {\alert{$l_\text{new}$}};
+	\draw [->,thick,color=accent] (lnew) -- (newLeaf);
+}
+
+\only<3-5|handout:2>{
+	\btreeNode{newInner}{8.5}{-2.5};
+	\innerNodeKey{newInner}{0}{\textcolor{red}{47}};
+	\parentChildLink{newInner}{1}{newLeaf};
+}
+
+\only<4-5|handout:2>{
+	\parentChildLink{newInner}{0}{leaf5};
+}
+
+\only<5|handout:2>{
+	\innerNodeKey{root}{1}{\textcolor{red}{41}};
+	\parentChildLink{root}{2}{newInner};
+}
+\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+Insertion leading to \textbf{adding a new root}:
+
+\begin{center}
+
+Insert key \alert{$K=2$} \qquad \framebox{$n=3$}
+
+\vskip1em
+
+\scalebox{0.6}{\begin{tikzpicture}
+\btreeNode{oldRoot}{0}{0};
+\btreeNode{leaf0}{-4.5}{-3};
+\btreeNode{leaf1}{-1.5}{-3};
+\btreeNode{leaf2}{1.5}{-3};
+\btreeNode{leaf3}{4.5}{-3};
+\chainLink{leaf0}{leaf1};\chainLink{leaf1}{leaf2};\chainLink{leaf2}{leaf3};
+
+\leafNodeKey{leaf1}{0}{11};\leafNodeKey{leaf1}{1}{13};
+\leafNodeKey{leaf2}{0}{17};\leafNodeKey{leaf2}{1}{23};
+\leafNodeKey{leaf3}{0}{29};\leafNodeKey{leaf3}{1}{31};\leafNodeKey{leaf3}{2}{37};
+
+\only<1-2|handout:1>{
+	\parentChildLink{oldRoot}{0}{leaf0};\parentChildLink{oldRoot}{1}{leaf1};
+	\parentChildLink{oldRoot}{2}{leaf2};\parentChildLink{oldRoot}{3}{leaf3};
+	\innerNodeKey{oldRoot}{0}{11};\innerNodeKey{oldRoot}{1}{17};\innerNodeKey{oldRoot}{2}{29};
+}
+
+\only<1|handout:1>{
+	\LABELparentChildLink{oldRoot}{0}{leaf0}{$K<11$};
+	\leafNodeKey{leaf0}{0}{3};\leafNodeKey{leaf0}{1}{5};\leafNodeKey{leaf0}{2}{7};
+}
+
+\only<2-4|handout:2>{
+	\btreeNode{newLeaf}{-7.5}{-3};
+	\leafNodeKey{newLeaf}{0}{\alert{2}};
+	\leafNodeKey{newLeaf}{1}{\textcolor{red}{3}};\leafNodeKey{leaf0}{0}{5};\leafNodeKey{leaf0}{1}{7};
+	\chainLink{newLeaf}{leaf0};
+}
+
+\only<1-2|handout:1-2>{
+	\node (li) [above left=3em and 2em of leaf0] {\alert{$l_i$}};
+	\draw [->,thick,color=accent] (li) -- (leaf0);
+}
+
+\only<2|handout:2>{
+	\node (lnew) [above left=3em and 2em of newLeaf] {\alert{$l_\text{new}$}};
+	\draw [->,thick,color=accent] (lnew) -- (newLeaf);
+}
+
+\only<3-4|handout:2>{
+	\btreeNode{newInner}{-5}{0};
+	\innerNodeKey{newInner}{0}{\textcolor{red}{5}};
+	\innerNodeKey{oldRoot}{0}{\textcolor{red}{17}};\innerNodeKey{oldRoot}{1}{\textcolor{red}{29}};
+	\parentChildLink{newInner}{0}{newLeaf};\parentChildLink{newInner}{1}{leaf0};
+	\parentChildLink{oldRoot}{0}{leaf1};\parentChildLink{oldRoot}{1}{leaf2};
+	\parentChildLink{oldRoot}{2}{leaf3};
+	
+}
+
+\only<4|handout:2>{
+	\btreeNode{newRoot}{-2.5}{3};	
+	\innerNodeKey{newRoot}{0}{\textcolor{red}{11}};
+	\parentChildLink{newRoot}{0}{newInner};\parentChildLink{newRoot}{1}{oldRoot};
+
+}
+\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}{B+tree Insertions: Wrap Up}
+
+\textbf{Insertions have low cost. }
+
+In most systems, nodes can hold a few hundred keys, and after the tree grows to a reasonable size (usually 2 or 3 levels), only a small fraction of insertions require adding/modifying inner nodes.
+
+\vskip1em
+
+\textbf{The tree always grows ``upwards'', by adding \emph{parents}.}
+
+The worst case scenario of inserting into a tree $T$ is bound by $O(\mathit{height}(T))$, which is practically a constant (compared to the number of keys--i.e., tuples in the database).
+\end{frame}
+
+%
+% for the following examples we use nKyes = 4
+%
+\btreeKeysPerNode{4}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}{Deletions from B+ trees}
+
+When deleting a key from a B+ tree the main concern is ensuring the node occupancy \textbf{does not} go below the minimum allowed.\footnote{Recall that the more keys in a node (disk block) the \emph{higher} the I/O efficiency.}
+
+If a deletion does not make the node occupancy too low, there is nothing further to do.
+
+Dealing with a node with low occupancy (leaf or inner):\\
+- \textbf{coalesce} with a neighboring node\\
+- \textbf{move a key} from a neighboring node
+
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Coalescing} with neighbor node.
+
+\vskip1em
+
+\begin{center}
+
+Delete key \alert{$K=23$} \qquad \framebox{$n=4$; min occupancy is 2 keys}
+
+\vskip1em
+
+\scalebox{0.6}{\begin{tikzpicture}
+
+\btreeNode{root}{0}0;
+\btreeNode{leaf0}{-6}{-3};
+\btreeNode{leaf1}{-2}{-3};
+\btreeNode{leaf3}{6}{-3};
+\chainLink{leaf0}{leaf1};
+
+\innerNodeKey{root}{0}{7};
+
+\leafNodeKey{leaf0}{0}{3};\leafNodeKey{leaf0}{1}{5};
+\leafNodeKey{leaf1}{0}{7};\leafNodeKey{leaf1}{1}{11};
+\leafNodeKey{leaf1}{2}{13};\leafNodeKey{leaf1}{3}{17};
+
+\parentChildLink{root}{0}{leaf0};\parentChildLink{root}{1}{leaf1};
+
+\only<1|handout:1>{
+	\btreeNode{leaf2}{2}{-3};
+	\leafNodeKey{leaf2}{0}{23};\leafNodeKey{leaf2}{1}{29};
+	\innerNodeKey{root}{1}{23};\innerNodeKey{root}{2}{31};
+	\leafNodeKey{leaf3}{0}{31};\leafNodeKey{leaf3}{1}{37};\leafNodeKey{leaf3}{2}{41};
+	\parentChildLink{root}{3}{leaf3};
+	\chainLink{leaf1}{leaf2};\chainLink{leaf2}{leaf3};
+
+	\LABELparentChildLink{root}{2}{leaf2}{$23 \leq K < 31 $};
+
+	\node (0) at (3.175,-3.35) [draw,very thick,dotted,circle,color=blue,minimum width=2.5em] {};
+	\draw [->,very thick,color=blue,dotted] (0) to[out=45,in=135] (leaf3);
+}
+
+\only<2|handout:2>{
+	\innerNodeKey{root}{1}{\textcolor{red}{29}};
+	\leafNodeKey{leaf3}{0}{\textcolor{red}{29}};\leafNodeKey{leaf3}{1}{31};
+	\leafNodeKey{leaf3}{2}{37};\leafNodeKey{leaf3}{3}{41};
+	\parentChildLink{root}{2}{leaf3};
+	\chainLink{leaf1}{leaf3};
+}
+\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Moving a key} from a neighbor node.
+
+\vskip1em
+
+\begin{center}
+
+Delete key \alert{$K=23$} \qquad \framebox{$n=4$; min occupancy is 2 keys}
+
+\vskip1em
+
+\scalebox{0.6}{\begin{tikzpicture}
+
+\btreeNode{root}{0}{0};
+\btreeNode{leaf0}{-6}{-3};
+\btreeNode{leaf1}{-2}{-3};
+\btreeNode{leaf2}{2}{-3};
+\btreeNode{leaf3}{6}{-3};
+\chainLink{leaf0}{leaf1};\chainLink{leaf1}{leaf2};\chainLink{leaf2}{leaf3};
+
+\innerNodeKey{root}{0}{7};\innerNodeKey{root}{2}{31};
+\leafNodeKey{leaf0}{0}{3};\leafNodeKey{leaf0}{1}{5};
+\leafNodeKey{leaf1}{0}{7};\leafNodeKey{leaf1}{1}{11};\leafNodeKey{leaf1}{2}{13};
+\leafNodeKey{leaf2}{1}{29};
+\leafNodeKey{leaf3}{0}{31};\leafNodeKey{leaf3}{1}{37};\leafNodeKey{leaf3}{2}{41};
+
+\parentChildLink{root}{0}{leaf0};\parentChildLink{root}{1}{leaf1};
+\parentChildLink{root}{2}{leaf2};\parentChildLink{root}{3}{leaf3};
+
+\only<1|handout:1>{
+	\leafNodeKey{leaf2}{0}{23};
+	\leafNodeKey{leaf1}{3}{17};
+	\innerNodeKey{root}{1}{23};
+	
+	\LABELparentChildLink{root}{2}{leaf2}{$23 \leq K < 31 $};
+	\node (0) at (0.725,-3.35) [draw,very thick,dotted,circle,color=blue,minimum width=2.5em] {};
+	\draw [->,very thick,color=blue,dotted] (0) to[out=45,in=135] (leaf2);
+	\node (1) at (6.4,-3.35) [draw,very thick,dotted,circle,color=blue,minimum width=2.5em] {};
+	\draw [->,very thick,color=blue,dotted] (1) to[out=135,in=45] (leaf2);
+}
+
+\only<2|handout:2>{
+	\leafNodeKey{leaf2}{0}{\textcolor{red}{17}};
+	\innerNodeKey{root}{1}{\textcolor{red}{17}};
+}
+\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Coalescing} inner nodes.
+
+\vskip1em
+
+\begin{center}
+
+Delete key \alert{$K=41$} \qquad \framebox{$n=4$; min occupancy is 2 keys}
+
+\vskip1em
+
+\scalebox{0.5}{\begin{tikzpicture}
+
+\btreeNode{inner0}{-4}{-3.5};\innerNodeKey{inner0}{0}{7};\innerNodeKey{inner0}{1}{13};
+\btreeNode{leaf0}{-10}{-7};\btreeNode{leaf1}{-6}{-7};\btreeNode{leaf2}{-2}{-7};
+\parentChildLink{inner0}{0}{leaf0};\parentChildLink{inner0}{1}{leaf1};\parentChildLink{inner0}{2}{leaf2};
+
+\leafNodeKey{leaf0}{0}{3};\leafNodeKey{leaf0}{1}{5};
+\leafNodeKey{leaf1}{0}{7};\leafNodeKey{leaf1}{1}{11};
+\leafNodeKey{leaf2}{0}{13};\leafNodeKey{leaf2}{1}{17};
+
+\btreeNode{leaf3}{2}{-7};\btreeNode{leaf5}{10}{-7};
+\leafNodeKey{leaf3}{0}{23};\leafNodeKey{leaf3}{1}{29};\leafNodeKey{leaf3}{2}{31};
+\leafNodeKey{leaf5}{0}{47};\leafNodeKey{leaf5}{1}{53};\leafNodeKey{leaf5}{2}{59};
+
+\chainLink{leaf0}{leaf1};\chainLink{leaf1}{leaf2};\chainLink{leaf2}{leaf3};
+
+\only<1-3|handout:1>{
+	\btreeNode{root}{0}{0};\innerNodeKey{root}{0}{23};
+	\parentChildLink{root}{0}{inner0};
+	\btreeNode{inner1}{4}{-3.5};\parentChildLink{root}{1}{inner1};
+	\parentChildLink{inner1}{0}{leaf3};
+
+}
+
+\only<1|handout:1>{
+	\btreeNode{leaf4}{6}{-7};
+	\leafNodeKey{leaf4}{0}{41};\leafNodeKey{leaf4}{1}{43};
+
+	\parentChildLink{inner1}{2}{leaf5};
+
+	\chainLink{leaf3}{leaf4};\chainLink{leaf4}{leaf5};
+
+	\innerNodeKey{inner1}{0}{41};\innerNodeKey{inner1}{1}{47};
+
+	\LABELparentChildLink{root}{1}{inner1}{$K>23$};	
+	\LABELparentChildLink{inner1}{1}{leaf4}{$41 \leq K <47$};
+
+	\node (0) at (7.2,-7.3) [draw,very thick,dotted,circle,color=blue,minimum width=2.5em] {};
+	\draw [->,very thick,color=blue,dotted] (0) to[out=135,in=45] (leaf3);
+	\draw [->,very thick,color=blue,dotted] (0) to[in=135,out=45] (leaf5);
+}
+
+\only<2-4|handout:2>{
+	\leafNodeKey{leaf3}{3}{\textcolor{red}{43}};
+	\chainLink{leaf3}{leaf5};
+}
+
+\only<2-3|handout:1>{
+	\node (1) at (4.45,-3.75) [draw,very thick,dotted,circle,color=blue,minimum width=2.5em] {};
+	\draw [->,very thick,color=blue,dotted] (1) to[out=135,in=60] (inner0);
+}
+
+\only<2-3|handout:0>{
+	\parentChildLink{inner1}{1}{leaf5};
+	\innerNodeKey{inner1}{0}{47};
+}
+
+\only<3|handout:1>{
+	\node (3) at (2.42,-7.3) [draw,very thick,dotted,circle,color=blue,minimum width=2.5em] {};
+	\draw [->,very thick,color=blue,dotted] (3) to[out=135,in=315] (inner0);
+
+	\node (4) at (10.45,-7.3) [draw,very thick,dotted,circle,color=blue,minimum width=2.5em] {};
+	\draw [->,very thick,color=blue,dotted] (4) to[out=150,in=315] ([xshift=-5pt]inner0.south east);
+}
+
+\only<3|handout:0>{
+	\draw [-,very thick,dotted,color=red] (-0.25,0.25) -- (3.5,-1.5);
+	\draw [-,very thick,dotted,color=red] (-0.25,-1.5) -- (3.5,0.25);
+
+	\draw [-,very thick,dotted,color=red] (3.75,-4.95) -- (7.5,-3.25);
+	\draw [-,very thick,dotted,color=red] (3.75,-3.25) -- (7.5,-4.95);
+}
+
+\only<4|handout:2>{
+	\parentChildLink{inner0}{3}{leaf3};
+
+	% copy the command this once to adjust the angles and avoid the lines crossing :(
+	\draw [*->,>=stealth'] ([xshift=\dimexpr -1pt + 0.5\btreePointerBoxWidth + (1pt+\btreePointerBoxWidth) * 4,
+							 yshift=\dimexpr -0.5\btreePointerBoxWidth]{inner0.west}) to[out=345,in=135] (leaf5);
+
+	
+	\innerNodeKey{inner0}{2}{\textcolor{red}{23}};\innerNodeKey{inner0}{3}{\textcolor{red}{47}};
+}
+
+\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}{B+tree Maintenance in Practice}
+
+Like with flat indexes, in practice, deletions in B+ trees are handled by marking the records \underline{at the leaf nodes} with \alert{``tombstone'' markers} (\includegraphics[height=1em]{figures/RIP.pdf}). When the database goes offline for maintenance, the index is rebuilt and the tombstones are removed.
+
+\vskip1em
+
+The overhead of removing nodes and rearranging pointers to disk blocks is not worth the potential savings they would introduce.
+
+\end{frame}
+
+
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}{B+tree: cost summary}
+
+B+trees can be seen as\\
+ - a dense flat index at the leaf-level which supports range searches\\
+ - a hierarchical sparse index over that flat index, with height $H$
+
+\vskip1em
+
+\textbf{Searching} for a key requires reading \fbox{$O(H)$} disk blocks.  In practice, B+trees with 3 levels can index a very large range of search keys.
+
+\vskip1em
+
+\textbf{Insertions} may require adding new leaf nodes and/or new inner nodes, all the way up to the root, at cost \fbox{$O(H)$} where $H$ is the height of the tree.
+
+\vskip 1em
+
+\textbf{Deletions} cost the same as insertions, but many DBMSs just use ``tombstone'' markers instead for simplicity.
+
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------
+%
+\begin{frame}{How useful are B+ trees in practice?}
+
+Indexes are used to implement primary and foreign keys and to speed up the evaluation of predicates in a \lstinline[style=SQL]{WHERE} clause of a query. Without indexes, all of these operations would require reading $O(N)$ blocks of a ``table file'' with $N$ blocks.
+
+With B+trees, except for range queries, all costs are reduced to $O(H)$, where $h$ is the height of the B+tree, which in turn is $O(\log_k N)$, where $N$ is the number of blocks in the table file and $k$ is the number of pointers in each B+tree node.
+
+In complexity terms, \textbf{indexes trade time for space}: they require several disk blocks (space), but save (a lot) of time in accessing tuples. Because secondary storage is ever more inexpensive, indexes are a great idea.
+
+
+\end{frame}

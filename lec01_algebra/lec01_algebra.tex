@@ -1,0 +1,589 @@
+\documentclass[xcolor={usenames,dvipsnames}]{beamer}
+
+%
+% ugly hack referring to the slides folder. Works for me.
+%
+\makeatletter
+\def\input@path{{/Users/denilson/teaching/cmput391/git-slides/}}
+\makeatother
+
+\input{cmput391macros}
+
+\title{Brief review of the Relational Algebra}
+
+\begin{document}
+
+\input{examples/movies_schema}
+\input{examples/movies_data}
+\input{examples/generic}
+\input{examples/recursion}
+
+
+\frame{\maketitle}
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+%%%%%%%%%%%%%%%%%%%%%%%% MUST BE THE SAME AS IN THE SQL SLIDES
+\begin{frame}{The Relational Model of Data}
+Relational databases were introduced in the 1970's, became prevalent in the 1980's and remain the industry standard for applications that manage large volumes of data
+
+In CMPUT291/391 we study two relational query languages:\\
+ - the algebra, which is clean and grounded on solid mathematical foundations\\
+ - SQL, which is a very complex language with many nuances and intricacies introduced to make programmers lives easier
+
+\begin{BOX}{The algebra and SQL are good friends}
+While the algebra is procedural and SQL is declarative they are ``largely equivalent''. In fact, most DBMSs translate SQL queries into algebraic expressions and evaluate them that way.
+\end{BOX}
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+\begin{BOX}{Relation}
+A relation is a \textbf{collection of} similar \textbf{facts} relevant to the application.
+
+- \textbf{schema}: relation name, attribute types, constraints;\\
+- \textbf{instance}: tuples.
+\end{BOX}
+
+In the context of the algebra, we ignore attribute types and constraints
+
+\usebox{\MovieTable}
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+%%%%%%%%%%%%%%%% MUST BE THE SAME IN THE SQL SLIDES
+\begin{frame}
+\vskip2em
+\begin{BOX}{Relational Database}
+A database is a \textbf{collection of} relations, each with its schema and constraints.
+
+- \textbf{schema}: the schemata of the relations \emph{plus} (optionally) inter-relation constraints;\\
+- \textbf{instance}: the instances of the relations.
+\end{BOX}
+
+\begin{BOX}{Legal database instance}
+A database instance is \textbf{legal} if it satisfies all constraints in the schema.
+\end{BOX}
+
+\begin{BOX}{Constraint}
+Logical condition over one or more tuples, derived from the application, that must be true at all times.
+\end{BOX}
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame} %%%% CONSTRAINTS
+
+The relational algebra is taught as a theoretical tool that helps one understand and prove statements about relational databases and more complex languages such as SQL.
+
+\vskip2em
+
+We thus ignore practical issues such as data types and constraints when talking about the algebra.
+
+\end{frame} %%%% CONSTRAINTS
+
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame} %%% EXAMPLE Movid DATABASE INSTANCE
+\label{movie_instance}
+\vspace*{0.25em}
+\usebox{\FullInstance}
+\end{frame} %%% EXAMPLE Movid DATABASE INSTANCE
+
+
+%
+%
+% The relational algebra
+%
+%
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}{The (Standard) Relational Algebra}
+
+The relational model is defined on solid mathematical grounds:\\
+ - relations are sets (or multisets) of tuples\\
+ - query languages manipulate tuples or sets of tuples
+
+\vskip0.5em
+
+The Relational Algebra is an operator-based, procedural language that allows us to manipulate relational data.
+
+\vskip0.5em
+
+\begin{BOX}{Algebra operators result in new relations}
+
+Every operator in the algebra takes one or two relations as input and \textbf{produces a new relation} as output.
+
+\vskip1em
+
+This is what allows operators to be combined to form complex queries.
+\end{BOX}
+
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}[fragile] %%%% BASIC ALGEBRA OPERATORS
+
+The (horizontal) \textbf{selection} operator \( \sigma_{c} (R) \):\\
+ - creates a new relation with all tuples from $R$ that satisfy the boolean condition $c$\\
+ - the \textbf{schema} of the resulting relation is the same as $R$
+
+\vfill
+\begin{center}
+\begin{tikzpicture}[align=center,node distance=3cm,every node/.style={inner sep=0.5,outer sep=0.5}]
+	\node (1) at (0,0) {\scalebox{0.75}{\usebox\BillMurrayMovies}};
+	\node (2) [below of=1] {\scalebox{0.75}{\usebox\CastTable}};
+	\path[commutative diagrams/.cd, every arrow, every label]
+		(2) edge node[swap] {$\sigma_{\text{actor='Bill Murray'}}(\text{Cast})$} (1);   
+\end{tikzpicture}
+\end{center}
+
+\end{frame} 
+
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}[fragile] %%%% BASIC ALGEBRA OPERATORS
+
+The \textbf{projection} operator \( \pi_{a_1,\ldots,a_n} (R) \):\\
+ - creates a new relation with attributes $a_1,\ldots,a_n$ of tuples from $R$\\
+ - the \textbf{schema} of the resulting relation is $a_1,\ldots,a_n$
+
+\vfill
+\begin{center}
+\begin{tikzpicture}[align=center,node distance=3cm,every node/.style={inner sep=0.5,outer sep=0.5}]
+	\node (1) at (0,0) {\scalebox{0.75}{\usebox\MovieDirectors}};
+	\node (2) [below of=1] {\scalebox{0.75}{\usebox\MovieTable}};
+	\path[commutative diagrams/.cd, every arrow, every label]
+		(2) edge node[swap] {$\pi_{\text{director}}(\text{Movie})$} (1);   
+\end{tikzpicture}
+\end{center}
+\end{frame} 
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}[fragile] %%%% BASIC ALGEBRA OPERATORS
+
+The \textbf{cross product} operator \( R \times S \):\\
+ - creates a new relation with the concatenation of every tuple in $R$ with every tuple in $S$\\
+ - the \textbf{schema} of the resulting relation has every attribute in $R$ followed by every attribute in $S$
+
+\vfill
+\begin{center}
+\begin{tikzpicture}[align=center,node distance=1.5cm,every node/.style={inner sep=0.5,outer sep=0.5}]
+    \node (1) at (0,0) {\scalebox{0.75}{\usebox\CrossProdExRS}};
+    \node (2) [below of=1]  {$\times$};
+    \node (3) [below left=0.35cm and 0.25cm of 2] {\scalebox{0.75}{\usebox\CrossProdExR}};
+    \node (4) [below right=0.35cm and 0.25cm of 2] {\scalebox{0.75}{\usebox\CrossProdExS}};
+    \path[commutative diagrams/.cd, every arrow, every label]
+    	(2) edge node {} (1)
+    	(3) edge node {} (2)
+    	(4) edge node {} (2);
+\end{tikzpicture}
+\end{center}
+\end{frame} 
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame} %%% JOIN ALGEBRA OPERATORS
+
+The \textbf{join} of two relations $R \Join_{c} S$ concatenates \emph{matching} 
+tuples from $R$ and $S$ and is defined as follows:
+\[R \Join_{c} S \equiv \sigma_{c} \left( R \times S \right)\]
+
+\vskip0.5em
+
+\begin{BOX}{Equi-joins and Natural Joins}
+
+The join condition $c$ normally involves attributes from both relations.
+
+\vskip0.5em
+
+An \textbf{equijoin} is a join where all conditions are equalities.
+
+\vskip0.5em
+
+The \textbf{natural join}\footnotemark of $R$ and $S$ written just $R \Join S$ is an equijoin defined over all attributes with the same name in $R$ and $S$.
+\end{BOX}
+
+\footnotetext{Some textbooks refer to the natural join simply as a ``join'', calling the join with a condition a theta-join: $\Join_\theta$}
+\end{frame} %%% JOIN ALGEBRA OPERATORS
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame} %%%% JOIN EXAMPLES
+
+Example: \( \text{Movie} \Join \left( \sigma_{\text{actor='Bill Murray'}}(\text{Cast}) \right) \)
+
+\begin{center}
+\begin{tikzpicture}[align=center,node distance=1.5cm,every node/.style={inner sep=0.5,outer sep=0.5}]
+    \node (1) at (0,0) {\scalebox{0.75}{\usebox\JoinMoviesBillMurrayMovies}};
+    \node (2) [below of=1]  {$\Join$};
+    \node (3) [below left=0.35cm and 0.25cm of 2] {\scalebox{0.6}{\usebox\MovieTable}};
+    \node (4) [below right=0.35cm and 0.25cm of 2] {\scalebox{0.6}{\usebox\BillMurrayMovies}};
+    \node (5) [below=0.75cm of 4] {\scalebox{0.6}{\usebox\CastTable}};
+    \path[commutative diagrams/.cd, every arrow, every label]
+    	(2) edge node {} (1)
+    	(3) edge node {} (2)
+    	(4) edge node {} (2)
+    	(5) edge node[swap] {$\sigma_{\text{actor='Bill Murray'}}(\text{Cast})$} (4);
+\end{tikzpicture}
+\end{center}
+
+\end{frame} %%%% JOIN EXAMPLES
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame} %%% SCHEMA OF A JOIN
+
+The \textbf{schema} of the relation resulting from a join has all attributes in the incoming relations.
+
+\vskip1em
+
+For convenience, in these slides, we omit repeated attributes for the sake of clarity, as in:
+ \[ \text{Movie} \Join \left( \sigma_{\text{actor='Bill Murray'}}(\text{Cast}) \right) \]
+
+ \begin{center}
+ \scalebox{0.75}{\usebox\JoinMoviesBillMurrayMovies}
+ \end{center}
+
+ \vskip1em
+
+ Different DBMSs handle these situations differently. Try an example like this on SQLite!
+
+\end{frame} %%% SCHEMA OF A JOIN
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame} %%%%  OUTER-JOINS
+
+The join operator ignores all tuples from either relation that do not match with any tuple in the other relation. To keep non-matching tuples we can use an \textbf{outerjoin}.\footnote{The Garcia-Molina, Ullman, Widom book uses a different notation: $R \TextbookOuterJoin S$}
+
+The \textbf{left outerjoin} \(R \LeftOuterJoin S\) keeps unmatched tuples in $R$ with NULL values for the missing tuple in $S$.
+
+\vskip0.5em 
+
+Example: \(\text{Cinema} \LeftOuterJoin_{\text{name=theater}} \text{Guide}\):
+\begin{center}
+\scalebox{0.75}{\usebox\LeftOuterJoinCinemaGuide}
+\end{center}
+
+The \textbf{right outerjoin} \(R \RightOuterJoin S\) and the \textbf{full outerjoin} \(R \FullOuterJoin S \) are defined analogously.
+
+\end{frame} %%%%  OUTER-JOINS
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame} %%%% SEMIJOINS
+
+Another variant of the join operator is the \textbf{semijoin}.
+
+\vskip1em
+
+The \textbf{left semijoin} \(R \ltimes_{c} S \) produces a relation with tuples from $R$ that have a matching tuple in $S$.
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.57\textwidth}
+Example\footnotemark:\\\hspace*{2em} \(\text{Cinema} \ltimes_{\text{name=theater}} \text{Guide}\)
+\end{column}
+\begin{column}{0.42\textwidth}
+\scalebox{0.75}{\usebox\SemijoinCinemaGuide}
+\end{column}
+\end{columns}
+
+\vskip2em
+
+\footnotetext{Note that the result does not have duplicates, even though there are two matches in Guide for the Garneu tuple in Cinema.}
+
+The \textbf{right semijoin} \(R \rtimes_{c} S \) is defined analogously.
+\end{frame} %%%% SEMIJOINS
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}{Set operations} %%% SET OPERATORS
+
+In the standard relational model and algebra, \textbf{relations are sets} and thus one can use the other set operators (besides cross product) on them.
+
+\vskip1em
+
+In this case, however, we require the relations to be \emph{compatible} (i.e., have the same schema).
+
+ - \(R \cup S\) : all tuples in $R$ or $S$ (or both)
+
+ - \(R \cap S\) : all tuples common to $R$ and $S$
+
+ - \(R - S\) : all tuples in $R$ but not in $S$
+
+\end{frame} %%% SET OPERATORS
+
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}{Renaming} %%%%% RENAME OPERATOR
+
+Consider finding actors who starred in a movie and a remake of the movie. From slide~\ref{movie_instance} we gather actress Sigourney Weaver would be an answer, as she acted on the original Ghostbusters of 1984 and the remake in 2016\footnote{Although missing from the example, Dan Aykroyd would be another answer.}
+
+The query we seek has to concatenate \emph{two tuples from Cast} (one for the original move, and the other for the remake).
+
+We can find the concatenations with the Cartesian product of Cast with \emph{itself}, but, we need to \textbf{rename} the attributes in one of the copies to express a selection condition that the years are different
+
+\begin{center}
+\scalebox{0.7}{\usebox\SelfJoinExampleSigourneyWeaver}
+\end{center}
+\end{frame} %%%%% RENAME OPERATOR
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame} %%%% RENAME OPERATOR
+
+The renaming operator $\rho_{S(b_1,\ldots,b_n)}(R)$ creates a ``copy'' of a relation $R(a_1,\dots,a_n)$ that has a different schema but the same instance.
+
+Thus, the query we are looking for is
+
+\[ \pi_{\text{actor}}\left(\text{Cast} 
+\Join_{\substack{\text{title=title2}\\\wedge\ \text{actor=actor2}\\\wedge\ \text{year}\neq\text{year2}}} 
+\rho_{\text{Cast2(title2,year2,actor2,role2)}}(\text{Cast})\right) \]
+
+\vskip2em
+
+The $\wedge$ in the join condition stands for the \highlight{conjunction} (or logical ``and'') of two Boolean expression.
+
+\end{frame} %%%% RENAME OPERATOR
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}
+\label{conjunctiveQueriesMonotonicity}
+\vspace*{2em}
+\begin{BOX}{Conjunctive queries}
+A query is said to be conjunctive if it uses only $\sigma$, $\pi$, $\rho$ and $\Join$ operators and all selection/join conditions $c$ involve only single predicates or conjunctions of predicates.
+\end{BOX}
+
+\begin{BOX}{Positive queries}
+A query is said to be positive if it does not use the set difference (-) operator.
+\end{BOX}
+
+\begin{BOX}{Positive queries are monotonic}
+A monotonic query is such that \emph{inserting} new tuples in the database cannot \emph{reduce} the number of tuples in the answer to the query.
+\end{BOX}
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}{Rewriting algebra expressions}
+
+Conjunctive predicates can be rewritten as the intersection of queries... and vice-versa!
+
+\textbf{Example}: movies with Sigourney Weaver \emph{and} from year 1984:
+\[ \pi_{\text{title,year}}\left(
+\sigma_{\text{actor='Sigourney Weaver'}\alert{\wedge}\ \text{year}=1984}
+\left(\text{Cast} \right)\right)\]
+
+is equivalent to
+\[
+\pi_{\text{title,year}}
+\left(
+\sigma_{\text{actor='Sigourney Weaver'}}(\text{Cast})
+\alert{\cap}
+\sigma_{\text{year}=1984}(\text{Cast})
+\right)
+\]
+
+This property is actually useful for a DBMS developer, as it allows the query optimizer to modify the original query provided by the user in a way to achieve better performance.
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}
+\label{disjunctionAndUnion}
+Disjunctive predicates can be rewritten as the union of queries... and vice-versa!
+
+\textbf{Example}: movies with Sigourney Weaver \emph{or} Bill Murray:
+
+
+\[ \pi_{\text{title,year}}\left(
+\sigma_{\text{actor='Sigourney Weaver'}\ \alert{\vee}\ \text{actor='Bill Murray'}}
+\left(\text{Cast}\right)\right)\]
+
+is equivalent to
+\[
+\pi_{\text{title,year}}
+\left(
+\sigma_{\text{actor='Sigourney Weaver'}}(\text{Cast})
+\alert{\cup}
+\sigma_{\text{actor='Bill Murray'}}(\text{Cast})
+\right)
+\]
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}{}
+
+When we say~~~~ 
+\(Q_1: \ \ \ \sigma_{a_1=x_1 \ \wedge\ \cdots\ \wedge a_n=x_n}(R)\)
+
+is equivalent to ~~~~
+\(Q_2: \ \ \ \sigma_{a_1=x_1}(R) \ \cap \cdots \cap \sigma_{a_n=x_n}(R)\)
+
+We mean that, for any instance of $R$, every tuple $t$ in the result of $Q_1$ \textbf{must also} be in the result of $Q_2$
+
+\highlight{Statements like this are useless unless \textbf{proven} correct.}\footnote{Although CMPUT391 does not cover \emph{database theory}, the good student should understand and try to prove equivalences mentioned in the course.}
+
+Sample proof by \emph{contradiction}. Assume there is an instance of $R$ for which there is a tuple $t$ that is in the answer of $Q_1$ but not in the answer of $Q_2$. However, if $t$ is in the answer of $Q_1$ it must satisfy every predicate $a_i=x_i$; meaning it must be in the answer of $Q_2$. This contradiction proves the queries \emph{are} equivalent.
+
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}{Other equivalence-based rewrite rules}
+\label{commutativeAssociativeRules}
+
+Many algebra operators are both associative and commutative\footnote{Note that there is no ``order'' for the attribute names in a relation schema}:\\
+- \(R\times S = S \times R\); ~~~ \((R\times S)\times T = R \times (S\times T)\)\\
+- \(R\Join S = S \Join R\); ~~~ \((R\Join S)\Join T = R \Join (S\Join T)\)\\
+- \(R\cap S = S \cap R\); ~~~ \((R\cap S)\cap T = R \cap (S\cap T)\)\\
+- \(R\cup S = S \cup R\); ~~~ \((R\cup S)\cup T = R \cup (S\cup T)\)
+
+\vskip1em
+
+The standard join is commutative \(R\Join_c S = S\Join_c R\)  but generally not associative (as the attributes in the condition $c$ may not exist in all relations).
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}
+\label{otherEquivalencesWithSelections}
+
+\textbf{More equivalences involving selections}
+
+\begin{itemize}
+\item Cascading selections
+\[\sigma_{c_1\ \wedge\ c_2}(R) \ = \ \sigma_{c_1}\left(\sigma_{c_2}(R)\right) \ = \ \sigma_{c_2}\left(\sigma_{c_1}(R)\right)\]
+
+\item ``Pushing down'' through union
+\[\sigma_c(R\cup S) \ = \ \sigma_c(R) \cup \sigma_c(S)\]
+
+\item ``Pushing down'' through intersection
+\[\sigma_c(R\cap S)\ = \ \sigma_c(R)\cap S \ = \ R \cap \sigma_c(S)\]
+
+\item ``Pushing down'' through set difference
+\[\sigma_c(R-S) \ = \ \sigma_c(R) - S\]
+\end{itemize}
+\end{frame}
+
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}
+\label{pushingDownSelectionsThroughJoins}
+
+\textbf{Pushing down selections through joins}
+
+The general rule is to push the selection condition ``down'' to the relation participating in the join that contains the attributes in the selection condition. If both relations have the attributes, the selection can be pushed both ways.
+
+This rule applies to Cartesian products as well:
+
+\[\sigma_c(R \Join S) \ = \ \sigma_{c^R}(R) \Join \sigma_{c^S}S\]
+\[\sigma_c(R \Join_\theta S) \ = \ \sigma_{c^R}(R) \Join_\theta \sigma_{c^S}S\]
+\[\sigma_c(R \times S) \ = \ \sigma_{c^R}(R) \times \sigma_{c^S}S\]
+
+\vfill 
+
+$c^R$ are the conditions involving only attributes of $R$; similarly for $c^S$.
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+There aren't as many useful equivalence rules for \textbf{projections} as there are for selections, however.
+
+\vskip0.5em
+
+The main reason is that whenever we ``push'' a projection down, we must bring along all attributes used in other operators. For joins, we can rewrite \[\pi_{\mathbf{a}}(R\Join_\mathbf{b} S) \ = \ 
+\pi_{\mathbf{a}}\left(\pi_{\mathbf{c}}(R) \Join_\mathbf{b} \pi_\mathbf{d} (S)\right)\]
+
+Where $\mathbf{a}, \mathbf{b}, \mathbf{c}$ and $\mathbf{d}$ are \textbf{sets of attributes}.
+
+Note that the expressions above are equivalent only if both $\mathbf{c}$ and $\mathbf{d}$ contain \textbf{all} attributes in both $\mathbf{a}$ and $\mathbf{b}$. 
+
+Also, the outermost projection on $\mathbf{a}$ must remain unless $\mathbf{b}, \mathbf{c}$, 
+and $\mathbf{d}$ form a partition $\mathbf{a}$.
+
+\end{frame}
+
+
+%
+% ---------------------------------------------------------------------------------------------------
+%
+\begin{frame}{The Algebra is a procedural language}
+
+Expressions in the relational algebra can be parsed (obviously and unambiguously) into trees, where the leaf nodes contain base tables and inner nodes contain algebra operators.
+
+\vskip0.5em
+
+This gives an immediate algorithm for computing the result of queries: starting from the root, perform a (depth-first) traversal of the tree computing the relation resulting from the expression in every node in the tree, computing the inputs recursively.
+
+\vskip0.5em
+
+The simple procedure is the basis of the query execution engine in most relational DBMSs out there!
+\end{frame}
+
+
+\end{document}

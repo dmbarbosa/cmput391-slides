@@ -1,0 +1,124 @@
+\newlength{\btreeKeyWidth}
+\setlength{\btreeKeyWidth}{\widthof{~~99~~}\relax}
+
+\newlength{\btreeKeyHeight}
+\setlength{\btreeKeyHeight}{0.75\btreeKeyWidth}
+
+\newlength{\btreePointerBoxHeight}
+\setlength{\btreePointerBoxHeight}{\dimexpr 0.85\btreeKeyHeight\relax}
+
+\newlength{\btreeNodeHeight}
+\setlength{\btreeNodeHeight}{\dimexpr(3pt + \btreePointerBoxHeight + \btreeKeyHeight)\relax}
+
+
+%
+% the widths of the key box and the pointer box are related
+%
+\newlength{\btreeNodeWidth}
+\newlength{\btreePointerBoxWidth}
+
+
+\def\btreeKeysPerNode#1{
+	\pgfmathsetmacro{\NKEYS}{#1}
+	\pgfmathsetmacro{\NPOINTERS}{\NKEYS + 1}
+	\setlength{\btreeNodeWidth}{\dimexpr 1pt + ((\btreeKeyWidth + 1pt) * \NKEYS)}
+	
+	% the next one is trickier with \dimexpr :(
+	\pgfmathsetlength{\btreePointerBoxWidth}{((\btreeNodeWidth - 1pt) / (\NPOINTERS))-1pt}
+}
+\btreeKeysPerNode{3} %default
+
+\tikzset{
+	btreeNodeBox/.style={
+		anchor=north west,
+		draw,rectangle,
+		minimum width=\btreeNodeWidth,minimum height=\btreeNodeHeight
+	}
+}
+
+\tikzset{
+	btreeBlockPointerBox/.style={
+		anchor=south west, 
+		draw, rectangle, 
+		minimum width=\btreePointerBoxWidth, minimum height=\btreePointerBoxHeight,
+		fill=snow
+	}
+}
+
+% #1 --> id of node where pointer originates
+% #2 --> # of pointer box (0, 1, 2)
+\def\dummyDataLink#1#2{
+	\coordinate (dummy) at ([xshift=\dimexpr 1pt + 0.5\btreePointerBoxWidth + (1pt+\btreePointerBoxWidth) * #2,
+							 yshift=\dimexpr -2.5em + -0.425\btreePointerBoxWidth]{#1.west});
+	\draw [*->,>=stealth'] ([xshift=\dimexpr 1pt + 0.5\btreePointerBoxWidth + (1pt+\btreePointerBoxWidth) * #2,
+							 yshift=\dimexpr -0.425\btreePointerBoxWidth]{#1.west}) to[out=270,in=90] (dummy);
+}
+
+% #1 --> node id
+% #2 --> position within node (0,1,2)
+% #3 --> key
+\def\innerNodeKey#1#2#3{
+	\node [draw,below left = 0pt and 0pt of {#1}.north west, 
+			minimum width = \btreeKeyWidth, minimum height = \btreeKeyHeight,
+			xshift={ 1.5pt + \btreeKeyWidth + (\dimexpr 1pt+ \btreeKeyWidth) * #2},
+			yshift={ -1pt }] {#3};
+}
+
+% #1 --> node id
+% #2 --> position within node (0,1,2)
+% #3 --> key
+\def\leafNodeKey#1#2#3{
+	\node [draw,below left = 0pt and 0pt of {#1}.north west, 
+			minimum width = \btreeKeyWidth, minimum height = \btreeKeyHeight,
+			xshift={ 1.5pt + \btreeKeyWidth + (\dimexpr 1pt+ \btreeKeyWidth) * #2},
+			yshift={ -1pt }] {#3};
+	\dummyDataLink{#1}{#2};
+}
+
+
+% #1     --> block id
+% #2, #3 --> block top-left coordinates
+\def\btreeNode#1#2#3{
+	\node ({#1}) at ({#2},{#3}) [anchor=north west, btreeNodeBox] {};
+	%
+	% draw the empty boxes for the keys
+	%
+	\pgfmathsetmacro{\TEMP}{\NKEYS - 1}
+	\foreach \i in {0,...,\TEMP}{
+		\innerNodeKey{#1}{\i}{};	
+	}
+	%
+	% draw the data pointer boxes
+	%
+	\pgfmathsetmacro{\TEMP}{\NPOINTERS - 1}
+	\foreach \i in {0,...,\TEMP}{
+		\node [above left=0pt and 0pt of {#1}.south west, btreeBlockPointerBox,
+				xshift=\dimexpr 1pt + (1pt + \btreePointerBoxWidth) * \i, 
+				yshift=\dimexpr 1pt ] {};
+	}
+}
+
+% #1 --> id of node where pointer originates
+% #2 --> # of pointer box (0, 1, 2)
+% #3 --> id of target node/object
+\def\parentChildLink#1#2#3{
+	\draw [*->,>=stealth'] ([xshift=\dimexpr 1pt + 0.5\btreePointerBoxWidth + (1pt+\btreePointerBoxWidth) * #2,
+							 yshift=\dimexpr -0.425\btreePointerBoxWidth]{#1.west}) to[out=270,in=90] (#3);
+}
+
+% #1 --> id of node where pointer originates
+% #2 --> # of pointer box (0, 1, 2)
+% #3 --> id of target node/object
+\def\LABELparentChildLink#1#2#3#4{
+	\draw [*->,>=stealth'] ([xshift=\dimexpr 1pt + 0.5\btreePointerBoxWidth + (1pt+\btreePointerBoxWidth) * #2,
+							 yshift=\dimexpr -0.425\btreePointerBoxWidth]{#1.west}) to[out=270,in=90] 
+							 node [fill,color=background,midway] {\textcolor{red}{#4}} (#3); 
+}
+
+
+% #1 --> id of node where pointer originates
+% #2 --> id of target node/object
+\def\chainLink#1#2{
+	\draw [*->,>=stealth'] ([xshift=-0.725\btreePointerBoxWidth,
+							 yshift=-0.5725\btreePointerBoxWidth]{#1.east}) to[out=0,in=180] (#2);
+}

@@ -1,0 +1,207 @@
+%!TEX root = lec02_sql.tex
+
+%
+% ------------------------------------------------------------------------------
+%
+
+\begin{frame}{SQL Equivalence with the Relational Algebra}
+
+Although very different in many respects, SQL and the algebra share many commonalities. In fact, we can write in the algebra many queries that are also expressible in SQL.
+
+This is a good thing because there is an efficient (and easy to optimize) algorithm to compute answers to algebra expressions. 
+
+Thus, we can answer a SQL query by: (1) translating it into an equivalent algebra expression; and (2) evaluating that expression efficiently.
+
+\textbf{This is in fact what most DBMSs do!}
+
+CMPUT391 is not a theory course, so we will not prove any equivalence results. Instead, only some hints are given.
+
+\end{frame}
+
+
+%
+% ------------------------------------------------------------------------------
+%
+
+\newsavebox\algebraBasicSelectFromWhere
+\savebox{\algebraBasicSelectFromWhere}{
+    \begin{tikzpicture}[align=center,node distance=0.825cm,every node/.style={inner sep=0.5,outer sep=0.5,font=\footnotesize}]
+    \node (P1) at (0,0) {$\pi_{a_1,\ldots,a_n}$};
+    \node (P2) [below of=P1] {$\sigma_{c_1\ \wedge\ \cdots\ \wedge c_k}$};
+    \node (P3) [below of=P2] {$\times$};
+    \node (P4) [below left=0.25cm and 0.25cm of P3] {$\times$};
+    \node (P5) [below right=0.25cm and 0.25cm of P3] {$T_m$};
+    \node (P6) [below right=0.25cm and 0.25cm of P4] {$T_{m-1}$};
+    \node (P7) [inner sep=4,below left=0.25cm and 0.125cm of P4] {$\cdots$};
+    \node (P8) [below left=0.25cm and 0.125cm of P7] {$\times$};
+    \node (P9) [below left=0.25cm and 0.125cm of P8] {$T_1$};
+    \node (P10) [below right=0.25cm and 0.125cm of P8] {$T_2$};
+    \path[commutative diagrams/.cd, every arrow, every label]
+        (P2) edge node {} (P1)
+        (P3) edge node {} (P2)
+        (P4) edge node {} (P3)
+        (P5) edge node {} (P3)
+        (P6) edge node {} (P4)
+        (P7) edge node {} (P4)
+        (P8) edge node {} (P7)
+        (P9) edge node {} (P8)
+        (P10) edge node {} (P8);
+\end{tikzpicture}%
+}
+
+
+\begin{frame}[fragile] %%%% equivalence of SQL and algebra
+\label{AlgebraSQLEquivalencePartI}
+\vskip1em
+\begin{BOX}{Algebra and SQL equivalence -- take 1}
+It should now be obvious that one can easily write an algebra expression equivalent to a SQL query where:\\
+ - value expressions are attribute names\\
+ - table expressions are base tables\\
+ - predicates are comparisons involving attributes and/or constants
+\end{BOX}
+
+\vskip1em
+
+\begin{columns}%[onlytextwidth]
+\begin{column}{0.275\textwidth}
+\begin{lstlisting}[style=cmput391,language=SQL,escapeinside={(*}{*)},frame=single]
+SELECT (*$a_1, a_2, \ldots, a_n$*)
+FROM (*$T_1, T_2, \ldots, T_m$*)
+WHERE (*$c_1, c_2, \ldots, c_k$*)
+\end{lstlisting}
+\end{column}
+
+\begin{column}{0.45\textwidth}
+\scalebox{1.1}{\usebox\algebraBasicSelectFromWhere}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+%
+% EXAMPLE SQL QUERY FOR NEXT SLIDE
+%
+\newsavebox\SQLqueryBMM
+\begin{lrbox}{\SQLqueryBMM}
+\begin{minipage}{0.44\textwidth}
+\begin{lstlisting}[style=SQL]
+SELECT m.director
+FROM Movie m, 
+  (SELECT title, year 
+   FROM Cast
+   WHERE actor='Bill Murray'
+  ) AS bmm
+WHERE m.year=bmm.year 
+  AND m.title=bmm.title;
+\end{lstlisting}
+\end{minipage}
+\end{lrbox}
+
+%
+% ------------------------------------------------------------------------------
+%
+
+\begin{frame}[fragile]
+\label{AlgebraSQLEquivalencePartII}
+\vskip1em
+\begin{BOX}{Algebra and SQL equivalence -- take 2}
+ - Renaming in the algebra ($\rho$) can be used to handle SQL's \lstinline{AS} clauses
+
+ \vskip0.5em
+
+ - Table expressions that look like the ``simple SQL'' in slide~\ref{AlgebraSQLEquivalencePartI} can be expressed as ``sub-queries'' under the main $\times$ operator
+\end{BOX}
+
+\vskip1em
+
+\begin{columns}%[onlytextwidth]
+\begin{column}{0.275\textwidth}
+\scalebox{0.75}{\fbox{\usebox\SQLqueryBMM}}
+\end{column}
+\begin{column}{0.6\textwidth}
+\scalebox{1.1}{%
+\begin{tikzpicture}[align=center,node distance=0.825cm,every node/.style={inner sep=0.5,outer sep=0.5,font=\footnotesize}]
+    \node (P1) at (0,0) {$\pi_{\text{m.director}}$};
+    \node (P2) [below of=P1] {$\sigma_{\substack{\text{m.year=bmm.year}\\\wedge\ \text{m.title=bmm.title}}}$};
+    \node (P3) [below of=P2] {$\times$};
+    \node (P4) [below right=0.25cm and 0.25cm of P3] {$\rho_{\substack{\text{bmm(bmm.title,}\\%
+           \text{bmm.year)}}}$};
+    \node (P5) [below left=0.25cm and 0.25cm of P3] {$\rho_{\substack{\text{m(m.title, m.year}\\
+           \text{m.imdb,m.director)}}}$};
+    \node (P6) [below=0.5cm of P4] {$\pi_{\text{title,year}}$};           
+    \node (P7) [below=0.5cm of P6] {$\sigma_{\text{actor='Bill Murray'}}$};
+    \node (P8) [below=0.5cm of P7] {Cast};
+    \node (P9) [below=0.5cm of P5] {Movie};
+    \path[commutative diagrams/.cd, every arrow, every label]
+        (P2) edge node {} (P1)
+        (P3) edge node {} (P2)
+        (P4) edge node {} (P3)
+        (P5) edge node {} (P3)
+        (P6) edge node {} (P4)
+        (P7) edge node {} (P6)
+        (P8) edge node {} (P7)
+        (P9) edge node {} (P5);
+\end{tikzpicture}%
+}
+\end{column}
+\end{columns}
+\end{frame}
+
+%
+% ------------------------------------------------------------------------------
+%
+
+\begin{frame}[fragile]
+
+\begin{BOX}{What about aggregation?}
+
+Most textbooks give an ``extended algebra'' with an operator \[\gamma_{\text{<grouping>,fn()}}(R)\]
+
+The \lstinline{GROUP BY} clause goes into ``grouping'' and fn() is the set function. The \lstinline{HAVING} clause are handled with a selection.
+\end{BOX}
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.3\textwidth}
+\begin{lstlisting}[style=SQL]
+SELECT theater, COUNT(*) 
+FROM Guide
+WHERE start > 1100
+GROUP BY theater
+HAVING COUNT(*) > 4
+\end{lstlisting}
+\end{column}
+\begin{column}{0.4\textwidth}
+\scalebox{1}{
+     \begin{tikzpicture}[align=center,node distance=0.825cm,every node/.style={inner sep=0.5,outer sep=0.5,font=\footnotesize}]
+    \node (P1) at (0,0) {$\pi_{\text{theater},\text{COUNT(*)}}$};
+    \node (P2) [below of=P1] {$\sigma_{\text{COUNT(*)}>4}$};
+    \node (P3) [below of=P2] {$\gamma_{\text{theater},\text{COUNT(*)}}$};
+    \node (P4) [below of=P3] {$\sigma_{\text{start}>1100}$};
+    \node (P5) [below of=P4] {\lstinline{Guide}};
+    \path[commutative diagrams/.cd, every arrow, every label]
+        (P2) edge node {} (P1)
+        (P3) edge node {} (P2)
+        (P4) edge node {} (P3)
+        (P5) edge node {} (P4);
+\end{tikzpicture}%
+}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}
+
+\begin{BOX}{What about recursion?}
+Recursion is normally left out of the algebra.
+\end{BOX}
+
+\vskip3em
+
+\begin{BOX}{What about universal quantification?}
+Many textbooks add a \textbf{division} operator to the algebra, specifically to compute ``for all'' queries. However, most relational engines do not use that operator in query plans.
+\end{BOX}
+
+\end{frame}

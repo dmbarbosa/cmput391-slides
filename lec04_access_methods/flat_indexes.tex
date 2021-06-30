@@ -1,0 +1,862 @@
+%!TEX root = ./lec04_access_methods.tex
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}[fragile]{Indexes Are Associative Data Structures}
+
+An index is an \alert{\textbf{associative data structure}} (stored on disk) that allows the DBMS to find tuples that satisfy a predicate defined over a subset of the attributes in the tuple.
+
+Index declarations are part of the SQL DDL:
+
+\vskip1em
+
+\begin{center}
+\lstinline[style=SQL]{ CREATE INDEX -:name :- On -:Table:- (-:attr_1 :- [, -:attr_2 :-[, ... [,-:attr_n:-]]]);}
+\end{center}
+
+The sequence of attributes \lstinline[style=cmput391]{-:attr_1:-, -:attr_2:-, ... ,-:attr_n:-} is called the index key (a.k.a., sort key, or search key).
+
+\vskip2em
+
+The index \textbf{associates} every index key with a \textbf{pointer} to the tuple containing that key.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+Indexes save time in answering queries by allowing the DBMS to skip tuples that do not satisfy predicates in the \lstinline[style=cmput391]{WHERE} clause\footnote{DBAs always look at the query workload to look for opportunities to add more indexes.}.
+
+\textbf{Example:}\qquad \begin{minipage}{0.75\textwidth}
+\begin{lstlisting}[style=SQL]
+CREATE INDEX IDX1 ON Movie(title);
+
+SELECT director
+FROM Movie
+WHERE title='Ghostbusters' AND year=1984
+\end{lstlisting}
+\end{minipage}
+
+Even if there are thousands of movies, the DBMS can use \lstinline[style=cmput391]{IDX1} to quickly find only those with ``Ghostbusters'' in the title (and then check the condition on year).
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}[fragile]
+
+Index maintenance:
+
+\vskip1em
+
+\begin{center}
+	\lstinline[style=SQL]{CREATE INDEX IDX1 ON Movie(title);}
+\end{center}
+
+\vskip2em
+
+The DBMS keeps the index \textbf{synchronized} with the table:
+\begin{itemize}[-]
+\item \alert{Every tuple} of \lstinline[style=cmput391]{Movie} has a corresponding entry in \lstinline[style=cmput391]{IDX1}.
+\item The DBMS updates the index \alert{after every update} (insertion, deletion or update of tuples) to the table.
+\end{itemize}
+ 
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{Flat Indexes}
+
+The next slides develop the basic ingredients of the B+ tree index, which is prevalent in modern DBMSs. We start with ``\textbf{flat indexes}'', corresponding to the lower level of a B+tree:
+
+\vskip1em
+\begin{block}{}
+A \textbf{flat index} is a \textbf{sequential file} in which every record has two fields:\\
+- the index \alert{key}: one or more attributes of tuple $t_i$ \\
+- a \alert{pointer} to $t_i$
+\end{block}
+\vskip1em
+
+As we will see, \textbf{hierarchical indexes} such as the B+tree are built on top of flat indexes, and this is why we will spend some time understanding them.
+
+
+\end{frame}
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+\label{index_title_movie}
+Example flat index on attribute \lstinline[style=cmput391]{title} of table Movie:
+
+\begin{center}
+\lstinline[style=cmput391]{> CREATE INDEX IDX1 ON Movie(Title);}
+\end{center}
+
+\vskip2em
+
+\begin{center}
+\begin{tikzpicture}
+\node [anchor=north west] at (-0.15,0) {\scalebox{0.85}{\usebox\TitleIndexOnMovie}};
+
+\node [color=accent] at (1,0.75) {Index File};
+\node [color=accent] at (5,0.75) {Data File};
+
+\only<2-3|handout:0>{
+\node (0) [draw,color=blue,rectangle,minimum width=2.7cm,minimum height=1.5cm] at (1.3,-0.75) {};
+\node (1) [color=blue] at (-1.2,-0.75) {\scriptsize block 1};
+\draw [color=blue,->] (1) -- (0);
+}
+\only<3|handout:0>{
+\node (2) [draw,color=blue,rectangle,minimum width=2.7cm,minimum height=1.5cm] at (1.3,-2.7) {};
+\node (3) [color=blue] at (-1.2,-2.7) {\scriptsize block 2};
+\draw [color=blue,->] (3) -- (2);
+}
+\only<4-5|handout:0>{
+\node (4) [draw,color=red,rectangle,minimum width=1.5cm,minimum height=0.3cm] at (1.15,-2.2) {};
+\node (5) [color=red] at (-1,-2.2) {\scriptsize key};
+\draw [color=red,->] (5) -- (4);
+}
+
+\only<5|handout:0>{
+\node (4) [draw,color=red,rectangle,minimum width=0.6cm,minimum height=0.3cm] at (2.25,-2.2) {};
+\node (5) [color=red] at (4,-3.1) {\scriptsize pointer};
+\draw [color=red,->] (5) -- (4);
+}
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+Index keys can be more than one column. 
+
+Example flat index on attributes \lstinline[style=cmput391]{Title} and \lstinline[style=cmput391]{Year}:
+
+\begin{center}
+\lstinline[style=cmput391]{> CREATE INDEX IDX2 ON Movie(Title,Year);}
+\end{center}
+
+\vskip2em
+
+\begin{center}
+\scalebox{0.85}{\usebox\TitleYearIndexOnMovie}
+\end{center}
+
+\vskip1em
+
+The \alert{order of the attributes in the key matters}! An index on \lstinline[style=cmput391]{Title,Year} is very different than an index on \lstinline[style=cmput391]{Year,Title}.
+
+\end{frame}
+
+\newsavebox\densePrimaryIndex
+\savebox{\densePrimaryIndex}{
+\begin{tikzpicture}
+\indexBlock{IB1}{0}{0};
+\keyPointer{kp1}{IB1}{0}{3};
+\keyPointer{kp2}{IB1}{1}{5};
+\keyPointer{kp3}{IB1}{2}{7};
+\keyPointer{kp4}{IB1}{3}{11};
+
+\indexBlock{IB2}{0}{-2};\linkIndexBlocks{IB1}{IB2};
+\keyPointer{kp5}{IB2}{0}{13};
+
+\dataBlock{DB1}{3}{0};
+\tuple{t1}{DB1}{0}{3};
+\tuple{t2}{DB1}{1}{5};
+
+\dataBlock{DB2}{3}{-1.25};\linkDataBlocks{DB1}{DB2};
+\tuple{t3}{DB2}{0}{7};
+\tuple{t4}{DB2}{1}{11};
+
+\dataBlock{DB3}{3}{-2.5};\linkDataBlocks{DB2}{DB3};
+\tuple{t5}{DB3}{0}{13};
+
+
+\KPtoTuple{kp1}{t1};\KPtoTuple{kp2}{t2};\KPtoTuple{kp3}{t3};
+\KPtoTuple{kp4}{t4};\KPtoTuple{kp5}{t5};%\KPtoTuple{kp6}{t6};
+\end{tikzpicture}}
+
+\newsavebox\sparseIndex
+\savebox{\sparseIndex}{
+\begin{tikzpicture}
+\indexBlock{IB1}{0}{0};
+\keyPointer{kp1}{IB1}{0}{3};
+\keyPointer{kp2}{IB1}{1}{7};
+\keyPointer{kp3}{IB1}{2}{13};
+
+\dataBlock{DB1}{3}{0};
+\tuple{t1}{DB1}{0}{3};
+\tuple{t2}{DB1}{1}{5};
+
+\dataBlock{DB2}{3}{-1.25};\linkDataBlocks{DB1}{DB2};
+\tuple{t3}{DB2}{0}{7};
+\tuple{t4}{DB2}{1}{11};
+
+\dataBlock{DB3}{3}{-2.5};\linkDataBlocks{DB2}{DB3};
+\tuple{t5}{DB3}{0}{13};
+
+\KPtoTuple{kp1}{t1};\KPtoTuple{kp2}{t3};\KPtoTuple{kp3}{t5};
+\end{tikzpicture}
+}
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{Terminology}
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.45\textwidth}
+A \textbf{dense index} has every index key in the table (meaning one pointer per tuple)
+\end{column}
+\begin{column}{0.55\textwidth}
+\qquad\scalebox{0.75}{\usebox\densePrimaryIndex}
+\end{column}
+\end{columns}
+
+\vskip3em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.45\textwidth}
+A \textbf{sparse index} has only some of the keys (and fewer pointers than tuples)
+
+\vskip0.5em
+
+Normally, each key in the index points to a different block of the data
+\end{column}
+\begin{column}{0.55\textwidth}
+\qquad\scalebox{0.75}{\usebox\sparseIndex}
+\end{column}
+\end{columns}
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{Primary Index}
+
+A \textbf{primary index} is a dense index on a sequential file \emph{sorted by the same keys} as the index.
+
+\vskip1em
+
+\begin{center}
+\scalebox{0.75}{\usebox\densePrimaryIndex}
+\end{center}
+
+\vskip1em
+
+\alert{Primary indexes speed up enforcing primary key constraints.}
+
+\vskip1em
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{Secondary Index}
+% \vskip2em
+\begin{columns}[onlytextwidth]
+\begin{column}{0.45\textwidth}
+In a \textbf{secondary index}, the keys in the index file are not sorted in the same way as the records on the data file.
+
+\vskip0.5em
+
+Secondary indexes are always dense.\footnotemark
+\end{column}
+\begin{column}{0.55\textwidth}
+\qquad\scalebox{0.75}{
+\begin{tikzpicture}
+\indexBlock{IB1}{0}{0};
+\keyPointer{kp1}{IB1}{0}{3};
+\keyPointer{kp2}{IB1}{1}{5};
+\keyPointer{kp3}{IB1}{2}{7};
+\keyPointer{kp4}{IB1}{3}{11};
+
+\indexBlock{IB2}{0}{-2};\linkIndexBlocks{IB1}{IB2};
+\keyPointer{kp5}{IB2}{0}{13};
+
+\dataBlock{DB1}{3}{0};
+\tuple{t5}{DB1}{0}{13};
+\tuple{t4}{DB1}{1}{11};
+
+\dataBlock{DB2}{3}{-1.25};\linkDataBlocks{DB1}{DB2};
+\tuple{t3}{DB2}{0}{7};
+\tuple{t2}{DB2}{1}{5};
+
+\dataBlock{DB3}{3}{-2.5};\linkDataBlocks{DB2}{DB3};
+\tuple{t1}{DB3}{0}{3};
+
+\KPtoTuple{kp1}{t1};\KPtoTuple{kp2}{t2};\KPtoTuple{kp3}{t3};
+\KPtoTuple{kp4}{t4};\KPtoTuple{kp5}{t5};%\KPtoTuple{kp6}{t6};
+\end{tikzpicture}}
+\end{column}
+\end{columns}
+
+\vskip0.5em
+
+\footnotetext{It should be obvious that a sparse secondary index would be useless.}
+
+Indexes created on attributes that are not the primary key are secondary indexes.
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{How does an index save time?}
+
+Blocks of the index file are the same size as the blocks of the (sequential or heap) data file. 
+
+Because the \alert{index records are smaller}, each block of the index covers more keys than a block of the data file.
+
+Typically, a disk block can hold:\\
+ - a few hundred key/pointer pairs or\\
+ - dozens of tuples
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+\textbf{Example}: table with 1 million tuples; each disk block can hold:\\
+ - 50 tuple (records) or \\
+ - 200 key-pointer pairs
+\end{column}
+\begin{column}{0.5\textwidth}
+\qquad\framebox{\begin{minipage}{0.8\textwidth}
+Sizes:\\
+ - data file: 20,000 blocks \\
+ - index file: 5,000 blocks 
+\end{minipage}}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Binary search on an index?}
+
+\vskip1em
+
+\begin{center}
+\framebox{\begin{minipage}{0.85\textwidth}
+\textbf{Binary search} for key \alert{$k$} on a sorted list of keys \textbf{in memory}:\\
+- find \alert{$m$}, the key \underline{``in the middle''} of the list\\
+- stop the search if \alert{$m=k$};\\ 
+- search recursively on the ``lower half'' if \alert{$k<m$}\\
+- search recursively on the ``upper half'', otherwise
+\end{minipage}}
+\end{center}
+
+\vskip1em
+
+\begin{BOX}{Binary Search \textbf{does not} work on an index file on disk}
+Binary Search requires $O(1)$ access time to \emph{any} of the keys, which is not possible if the blocks of the index are on disk.
+\end{BOX}
+
+\vskip2em
+
+\begin{center}
+\usebox{\genericDenseIndexWithNblocks}
+\end{center}
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{Multi-level indexes}
+
+One way to reduce the number of I/Os to search for a key in an index is to \textbf{stack} a sparse index over a dense index, of course, using the same index key.
+
+\vskip2em
+
+\begin{center}
+\usebox{\genericMultilevelIndexSparseOnDense}
+\end{center}
+
+\vskip1em
+
+Each record in the sparse index contains the \textbf{smallest} key in each block of the index below.
+\begin{itemize}[-,topsep=-0.5em]
+\item Therefore, every record in the sparse index corresponds to 200 records in the dense index ``below''.
+\end{itemize}
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+
+\begin{frame}
+
+\vskip1em
+
+\begin{center}
+\usebox{\genericMultilevelIndexSparseOnDense}
+\end{center}
+
+\vskip1em
+
+To find a record with index key $k=x$:
+\begin{enumerate}[(1),topsep=-0.5em,noitemsep]
+\item Search the sparse index for \alert{$\max(x') \leq x$}.
+\item Search the block of the dense index starting at key \alert{$x'$}.
+\item If the key is found, traverse the pointer to read the tuple from the table file.
+\end{enumerate}
+
+
+\end{frame}
+
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+How large will the sparse index be?
+
+\vskip2em
+
+\begin{center}
+\usebox{\genericMultilevelIndexSparseOnDense}
+\end{center}
+
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+\textbf{Example}: table with 1 million tuples; each disk block can hold:\\
+ - 50 tuple (records) or \\
+ - 200 key-pointer pairs
+\end{column}
+\begin{column}{0.5\textwidth}
+\qquad\framebox{\begin{minipage}{0.8\textwidth}
+We would have:\\
+ - data file: 20,000 blocks \\
+ - dense index: 5,000 blocks \\
+ - sparse index: \alert{25 blocks}
+\end{minipage}}
+\end{column}
+\end{columns}
+\end{frame}
+
+%%%% I/O cost example
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+\label{multilevel_index_cost_example}
+
+
+\textbf{Example:} cost of finding a tuple in the table by searching for a key.
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.6\textwidth}
+\scalebox{0.75}{\clipbox{45 0 0 0}{\usebox{\genericMultilevelIndexSparseOnDense}}}
+\end{column}
+\begin{column}{0.4\textwidth}
+\qquad\framebox{\begin{minipage}{0.9\textwidth}\footnotesize
+ - data file: 20,000 blocks \\
+ - dense index: 5,000 blocks \\
+ - sparse index: \alert{25 blocks}
+\end{minipage}}
+\end{column}
+\end{columns}
+
+
+\vskip2em 
+
+Cost of \textbf{retrieving} a tuple with key $k$:\\
+- without any index: \pause 20,000 I/Os\\
+- with dense index only: \pause 5,000 \pause \alert{+1} I/Os\\
+- with both indexes: \pause 25 \alert{+2} I/Os
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{Access Costs With (Stacked) Flat Indexes}
+
+Recall from slide ~\ref{costs_heap_sequential_files} that insertions, deletions and updates depended on the cost of \emph{finding} the tuples in the table files first.
+
+
+Assume table $R$ has $T(R)$ tuples and is stored on $M$ blocks on disk, and that we are searching for tuples satisfying a condition $c$.
+
+Generally, the cost has two parts:
+\begin{enumerate}[(1),topsep=-0.5em,noitemsep]
+\item Finding the tuples in the index.
+\item Retrieving each such tuple from the table (via a pointer traversal)
+\end{enumerate}
+
+If the table is stored on a heap file, the number of pointer traversals is $\ceil*{s(R,c)\cdot T(R)}$. Otherwise, it will be $\ceil*{s(R,c)\cdot M}$.
+
+The index cost is $\ceil*{(1-s(R,c)\cdot K) + h-1}$, where $K$ is the size (in blocks) of the top-most flat index and $h$ is the number of stacked indexes.
+
+\vskip1em
+
+\end{frame}
+
+
+\begin{frame}
+
+\vskip1em
+
+I/O cost to retrieve all tuples in $R$ satisfying \alert{condition $c: k=x$}:
+
+\begin{enumerate}[label=(\arabic*),topsep=-0.5em,noitemsep]
+\item $R$ on \textbf{heap file}, \underline{no index}: $M$ block reads
+\item $R$ on \textbf{sequential file}, \underline{no index}: $\ceil*{M\cdot \left(s(R, k < x) + s(R,k=x)\right)}$
+\end{enumerate}
+
+\vskip1em
+
+If we have a \underline{dense flat index} on $k$ occupying $N$ blocks:
+
+\begin{enumerate}[label=(\arabic*),topsep=-0.5em,noitemsep]
+\item $R$ on \textbf{heap file}: $\ceil*{N\cdot s(R, k\leq x) + s(R, k=x)\cdot T(R)}$ 
+\item $R$ on \textbf{sequential file}: $\ceil*{N\cdot s(R, k\leq x) + M\cdot s(R, k=x)}$
+\end{enumerate}
+
+
+\vskip1em
+
+If we have \underline{stacked sparse/dense indexes} on $k$ occupying $K$ and $N$ blocks, respectively:
+
+\begin{enumerate}[label=(\arabic*),topsep=-0.5em,noitemsep]
+\item $R$ on \textbf{heap file}: $\ceil*{K\cdot s(R,k\leq x) + 1 + s(R,k=v)\cdot T(R)}$ 
+\item $R$ on \textbf{sequential file}: $\ceil*{K\cdot s(R,k\leq x) + 1 + M\cdot s(R,k=x)}$
+\end{enumerate}
+
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+Every sparse index we add \textbf{further reduces the fraction} of the blocks from an index below that we need to scan:
+
+\begin{center}
+\scalebox{0.75}{\clipbox{45 0 0 0}{\usebox{\genericMultilevelIndexSparseOnDense}}}
+\end{center}
+
+Thus, the more levels of sparse indexes the better!
+
+\vskip1em
+
+\alert{B+trees take this idea to the extreme}, defining a self-balanced tree of index blocks in which:
+
+\begin{enumerate}[label=(\arabic*)]
+\item the topmost level (the root) is a \textbf{single-block} sparse index
+\item the leaves form a dense flat index
+\item the levels in between are sparse indexes
+\end{enumerate} 
+
+\end{frame}
+
+
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{Index maintenance}
+
+Any index is only useful if kept up-to-date after updates to the associated table.
+
+\vskip1em
+
+Flat indexes are sequential files, and thus have the same update costs as in slide~\ref{costs_heap_sequential_files}.
+ 
+Updating sparse indexes (like the higher levels of a multi-level index) is no different: all we need to look for is if there is room in the right block.
+
+\vskip1em
+
+The next few slides show examples of issues that arise when updating a flat index and its table.
+
+\end{frame}
+
+\begin{frame}
+
+\vskip0.5em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.6\textwidth}
+\vskip0.5em 
+\textbf{Example:} inserting a tuple with \textbf{index key 4}. Assume the table is kept in a \framebox{sequential file} for now.
+\end{column}
+\begin{column}{0.4\textwidth}
+\qquad\scalebox{0.5}{\usebox\densePrimaryIndex}
+\end{column}
+\end{columns}
+
+\vskip1.5em
+
+
+\textbf{Option 1:} Re-arrange records to use existing free space:
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+\scalebox{0.6}{
+\begin{tikzpicture}
+\indexBlock{IB1}{0}{0};
+\keyPointer{kp1}{IB1}{0}{3};
+\keyPointer{kp6}{IB1}{1}{\alert{4}};
+\keyPointer{kp2}{IB1}{2}{5};
+\keyPointer{kp3}{IB1}{3}{7};
+
+\indexBlock{IB2}{0}{-2};\linkIndexBlocks{IB1}{IB2};
+\keyPointer{kp4}{IB2}{0}{11};
+\keyPointer{kp5}{IB2}{1}{13};
+
+\dataBlock{DB1}{3}{0};
+\tuple{t1}{DB1}{0}{3};
+\tuple{t6}{DB1}{1}{\alert{4}};
+
+\dataBlock{DB2}{3}{-1.25};\linkDataBlocks{DB1}{DB2};
+\tuple{t2}{DB2}{0}{5};
+\tuple{t3}{DB2}{1}{7};
+
+\dataBlock{DB3}{3}{-2.5};\linkDataBlocks{DB1}{DB2};
+\tuple{t4}{DB3}{0}{11};
+\tuple{t5}{DB3}{1}{13};
+
+\KPtoTuple{kp1}{t1};\KPtoTuple{kp2}{t2};\KPtoTuple{kp3}{t3};
+\KPtoTuple{kp4}{t4};\KPtoTuple{kp5}{t5};\KPtoTuple{kp6}{t6};
+\end{tikzpicture}}
+\end{column}
+
+\begin{column}{0.5\textwidth}
+
+I/O intensive:\\
+- may require moving $O(|R|)$ of tuples to either end of the file\\
+- same for the index
+
+\end{column}
+\end{columns}
+
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Option 2:} Split existing blocks or add new ones as needed.
+\vskip0.5em
+
+\scalebox{0.6}{
+\begin{tikzpicture}
+\indexBlock{IB1}{0}{0};
+\keyPointer{kp1}{IB1}{0}{3};
+\keyPointer{kp6}{IB1}{1}{\alert{4}};
+
+\indexBlock{IB2}{0}{-2}\linkIndexBlocks{IB1}{IB2};
+\keyPointer{kp2}{IB2}{0}{5};
+\keyPointer{kp3}{IB2}{1}{7};
+\keyPointer{kp4}{IB2}{2}{11};
+
+\indexBlock{IB3}{0}{-4};\linkIndexBlocks{IB2}{IB3};
+\keyPointer{kp5}{IB3}{0}{13};
+
+\dataBlock{DB1}{3}{0};
+\tuple{t1}{DB1}{0}{3};
+\tuple{t6}{DB1}{1}{\alert{4}};
+
+\dataBlock{DB2}{3}{-1.25};\linkDataBlocks{DB1}{DB2};
+\tuple{t2}{DB2}{0}{5};
+
+\dataBlock{DB3}{3}{-2.5};\linkDataBlocks{DB2}{DB3};
+\tuple{t3}{DB3}{0}{7};
+\tuple{t4}{DB3}{1}{11};
+
+\dataBlock{DB4}{3}{-3.75};\linkDataBlocks{DB3}{DB4};
+\tuple{t5}{DB4}{0}{11};
+
+\KPtoTuple{kp1}{t1};\KPtoTuple{kp2}{t2};\KPtoTuple{kp3}{t3};
+\KPtoTuple{kp4}{t4};\KPtoTuple{kp5}{t5};\KPtoTuple{kp6}{t6};
+
+\node (0) at (-10,0) [anchor=north west] {\scalebox{0.9}{\usebox\densePrimaryIndex}};
+
+\node (1) at (-8.85,-0.8) [semithick,draw,color=red,style=dashed,rectangle,minimum width=6em,minimum height=6em,label=above:{\textcolor{red}{SPLIT}}] {};
+
+\node (1) at (-5.5,-0.5) [semithick,draw,color=red,style=dashed,rectangle,minimum width=8.5em,minimum height=3em,label=above:{\textcolor{red}{SPLIT}}] {};
+\end{tikzpicture}}
+
+\vskip1em
+
+\textbf{Pro:} fixed number of blocks added/split; in other words, this strategy has  $O(1)$ (constant) I/O cost
+
+\textbf{Con:} too much empty space reduces the effectiveness of the index
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+\vskip1em
+
+With a sparse index, the DBMS can avoid modifying the index by \emph{expanding} a data block with an \alert{overflow} block:
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.4\textwidth}
+\textbf{Example:} insertion of tuple with index key 4.
+
+\vskip0.5em
+Logically, there is now \emph{one} block with keys 3, 4 and 5.
+\end{column}
+\begin{column}{0.6\textwidth}
+\scalebox{0.6}{
+\begin{tikzpicture}
+\node (0) at (0,0) [anchor=north west] {\usebox{\sparseIndex}};
+
+\tikzset{dataBlockBox/.append style={color=red,thick}}
+\tikzset{dataBlockPointerBox/.append style={color=red,fill=snow,thick}}
+
+\dataBlock{overflow}{8}{-0.155};
+\tuple{to}{overflow}{0}{4};
+\node (1) at (6,-0.5) [outer sep=1,anchor=south west,draw,color=red,semithick,rectangle,minimum width=1em, minimum height=1em] {};
+
+\draw [*->,>=stealth',thick,color=red] ([xshift=3pt,yshift=0pt]1.west) to[out=0,in=180] (overflow);
+\end{tikzpicture}}
+\end{column}
+\end{columns}
+
+\vskip1em
+Many overflow blocks can be used, forming an \alert{overflow chain}.
+
+With overflow blocks or chains the search time becomes non-uniform, as some blocks are larger than others.
+
+During re-indexing, the DBMS removes all overflow chains and re-builds the index.
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+\vskip2em
+
+Deletions are, logically, the opposite of insertions. Which means that if we insert a tuple that causes the table file and the index file to grow, deleting that same tuple should cause both files to shrink.
+
+\vskip1em
+
+\begin{block}{But is that what the DBMS should do?}
+
+Performing deletions in this way incurs in more I/O operations.
+
+And we may have to grow the files again in the future due to another insertion.
+\end{block}
+
+\vskip1em
+
+In practice, the best way is to mark the deleted records with \alert{``tombstone'' marks} (\includegraphics[height=1em]{figures/RIP.pdf}), leaving the space available for future insertions.
+
+
+
+\end{frame}
+
+\begin{frame}
+
+
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.55\textwidth}
+\textbf{Example:} deletion of tuple with index key 5.
+
+\vskip0.5em
+A record with key between 3 and 7 can go where the record with 5 was.
+\end{column}
+\begin{column}{0.3\textwidth}
+\scalebox{0.5}{
+\begin{tikzpicture}
+\node at (0,0) [anchor=north west] {\usebox{\sparseIndex}};
+\node at (4.8, -0.75) [color=blue,draw,rectangle,minimum width=7em,minimum height=\tupleHeight,fill=blue!10,inner sep=0] {\includegraphics[height=1em]{figures/RIP.pdf}};
+\end{tikzpicture}}
+\end{column}
+\end{columns}
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.55\textwidth}
+\textbf{Example:} further deletion of tuple with index key 7.
+
+\vskip0.5em
+Any record with index key between 3 and 11 can go on either block.
+\end{column}
+\begin{column}{0.3\textwidth}
+\scalebox{0.5}{
+\begin{tikzpicture}
+\indexBlock{IB1}{0}{0};
+\keyPointer{kp1}{IB1}{0}{3};
+\keyPointer{kp2}{IB1}{1}{11};
+\keyPointer{kp3}{IB1}{2}{13};
+
+\dataBlock{DB1}{3}{0};
+\tuple{t1}{DB1}{0}{3};
+
+\dataBlock{DB2}{3}{-1.25};\linkDataBlocks{DB1}{DB2};
+\tuple{t2}{DB2}{0}{7};
+\tuple{t3}{DB2}{1}{11};
+
+\dataBlock{DB3}{3}{-2.5};\linkDataBlocks{DB2}{DB3};
+\tuple{t5}{DB3}{0}{13};
+
+\KPtoTuple{kp1}{t1};\KPtoTuple{kp2}{t3};\KPtoTuple{kp3}{t5};
+
+\node at (4.2, -0.6) [color=blue,draw,rectangle,minimum width=7em,minimum height=\tupleHeight,fill=blue!10,inner sep=0] {\includegraphics[height=1em]{figures/RIP.pdf}};
+\node at (4.2, -1.44) [color=blue,draw,rectangle,minimum width=7em,minimum height=\tupleHeight,fill=blue!10,inner sep=0] {\includegraphics[height=1em]{figures/RIP.pdf}};
+\end{tikzpicture}
+}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+\vskip1em
+\begin{BOX}{Updating a search key?}
+Update statements that modify the index key are handled like a deletion (of the original tuple) followed by an insertion (of a ``new'' tuple with the new index key).
+\end{BOX}
+
+After many insertions and deletions causing node splits or the use of tombstones, the data and index files can become \textbf{fragmented}, leading to sub-optimal I/O performance.
+
+\vskip1em
+
+\begin{BOX}{Re-indexing}
+Database administrators can set the DBMS to periodically re-build all data and index files, to redistribute the records across all blocks, removing largely unused blocks.
+\end{BOX}
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%

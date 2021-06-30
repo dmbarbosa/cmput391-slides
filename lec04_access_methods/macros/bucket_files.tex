@@ -1,0 +1,347 @@
+%
+% Bucket file measurements
+%
+\newlength{\bucketBlockWidth}
+\setlength{\bucketBlockWidth}{\dimexpr(\pointerBoxWidth+1.5pt)\relax}
+
+\def\pointerPerBucketBlock{8}
+
+\newlength{\bucketBlockHeight}
+\setlength{\bucketBlockHeight}{\dimexpr1pt+(\tupleHeight+0.5pt)*\the\numexpr\pointerPerBucketBlock\relax}
+
+\newlength{\bucketBlockPointerOffset}
+\setlength{\bucketBlockPointerOffset}{\dimexpr(\bucketBlockHeight-1em-1pt)\relax}
+
+
+
+%
+% MACROS FOR BUCKET FILES
+%
+
+\tikzset{
+    bucketBlockBox/.style={
+        xshift=-0.1em,yshift=0.1em,anchor=north west,draw,rectangle,
+        minimum width={\bucketBlockWidth},minimum height={\bucketBlockHeight}
+    }
+}
+
+\tikzset{
+    bucketBlockPointerBox/.style={
+        yshift=0.375pt,
+        anchor=north west, draw, rectangle, minimum width=1em, minimum height=1em,fill=snow
+    }
+}
+
+
+% #1     --> block id
+% #2, #3 --> block top-left coordinates
+\def\bucketBlock#1#2#3{
+    \node ({#1}) at ({#2},{#3}) [bucketBlockBox] {};
+    \node at ({#1}.south west) [bucketBlockPointerBox] {};
+}
+
+% #1     --> id
+% #2,#3  --> bucket id and ordinal
+\def\bucketPointer#1#2#3{
+    \node ({#1}) at ([xshift=1pt,yshift=\dimexpr -1pt-(\tupleHeight+0.5pt)*#3]{#2}.north west) 
+        [anchor=north west,keyPointerPointerBox] {};
+}
+
+
+% #1     --> block id
+% #2     --> id of block ``below'' #1
+\def\linkBucketBlock#1#2{
+    \draw [*->,>=stealth'] ([xshift=5pt,yshift=-2pt]{#1}.south west) to[out=270,in=90] ([xshift=10pt]#2.north west);
+}
+
+% #1 --> key-pointer id
+% #2 --> bucket pointer id
+\def\KPtoBucketPointer#1#2{
+    \draw [*->,>=stealth'] ([xshift=30pt,yshift=0em]{#1}.west) to[out=0,in=180] (#2.west);
+}
+
+% #1 --> bueckt-pointer id
+% #2 --> tuple id
+\def\bucketPointerToTuple#1#2{
+    \draw [*->,>=stealth'] ([xshift=-15pt,yshift=0em]{#1}.east) to[out=0,in=180] (#2.west);
+}
+
+
+
+
+%
+% EXAMPLE BUCKET FILE
+%
+\newsavebox\bucketFile
+\savebox{\bucketFile}{
+\begin{tikzpicture}
+% bucket file 
+\bucketBlock{bucket1}{0}{0};
+\bucketPointer{bp1}{bucket1}{0};
+\bucketPointer{bp2}{bucket1}{1};
+\bucketPointer{bp3}{bucket1}{2};
+\bucketPointer{bp4}{bucket1}{3};
+\bucketPointer{bp5}{bucket1}{4};
+\bucketPointer{bp6}{bucket1}{5};
+
+\bucketBlock{bucket2}{0}{-4};\linkBucketBlock{bucket1}{bucket2};
+\bucketPointer{bp7}{bucket2}{0};
+\bucketPointer{bp8}{bucket2}{1};
+\bucketPointer{bp9}{bucket2}{2};
+\bucketPointer{bp10}{bucket2}{3};
+\bucketPointer{bp11}{bucket2}{4};
+
+
+%index file
+
+\indexBlock{index0}{-7}{-1.75};
+\keyPointer{s1}{index0}{0}{3};
+\keyPointer{s2}{index0}{1}{13};
+
+
+\indexBlock{index1}{-4}{-1};
+\keyPointer{kp1}{index1}{0}{3};
+\keyPointer{kp2}{index1}{1}{5};
+\keyPointer{kp3}{index1}{2}{7};
+\keyPointer{kp4}{index1}{3}{11};
+
+\indexBlock{index2}{-4}{-3.25};\linkIndexBlocks{index1}{index2};
+\keyPointer{kp5}{index2}{0}{13};
+\keyPointer{kp6}{index2}{1}{17};
+
+% %
+% % copied the macros here and modified them so that the 
+% % index looks like a B+ tree instead of a flat index
+% %
+% \node (index3) at (-7,-1.75) [indexBlockBox] {};
+% \node (kp7) at ([xshift=1pt,yshift=\dimexpr -1pt-(\tupleHeight+0.5pt)*0]{index3}.north west) [anchor=north west,indexKeyBox] {13};
+% \node (ptr1) [right = -0.5pt of {kp7}] [keyPointerPointerBox] {};
+% \node (ptr2) [below = 0.1pt of ptr1] [keyPointerPointerBox] {};
+% \draw [*->,>=stealth'] ([xshift=10pt,yshift=0em]{ptr1}.west) to[out=0,in=180] (index1.west);
+% \draw [*->,>=stealth'] ([xshift=10pt,yshift=0em]{ptr2}.west) to[out=0,in=180] (index2.west);
+% %
+% %
+% %
+
+%pointers from index to buckets
+\KPtoBucketPointer{s1}{kp1};
+\KPtoBucketPointer{s2}{kp5};
+
+\KPtoBucketPointer{kp1}{bp1};
+\KPtoBucketPointer{kp2}{bp3};
+\KPtoBucketPointer{kp3}{bp6};
+\KPtoBucketPointer{kp4}{bp7};
+\KPtoBucketPointer{kp5}{bp10};
+\KPtoBucketPointer{kp6}{bp11};
+
+%data file
+\dataBlock{data1}{3}{0.5};
+\tuple{t1}{data1}{0}{5};
+\tuple{t2}{data1}{1}{7};
+
+\dataBlock{data2}{3}{-1};
+\tuple{t3}{data2}{0}{3};
+\tuple{t4}{data2}{1}{5};
+
+\dataBlock{data3}{3}{-2.5};
+\tuple{t5}{data3}{0}{11};
+\tuple{t6}{data3}{1}{3};
+
+\dataBlock{data4}{3}{-4};
+\tuple{t7}{data4}{0}{11};
+\tuple{t8}{data4}{1}{5};
+
+\dataBlock{data5}{3}{-5.5};
+\tuple{t9}{data5}{0}{11};
+\tuple{t10}{data5}{1}{17};
+
+\dataBlock{data6}{3}{-7};
+\tuple{t11}{data6}{0}{13};
+
+\linkDataBlocks{data1}{data2};
+\linkDataBlocks{data2}{data3};
+\linkDataBlocks{data3}{data4};
+\linkDataBlocks{data4}{data5};
+\linkDataBlocks{data5}{data6};
+
+% pointers for key = 3
+\bucketPointerToTuple{bp1}{t3};\bucketPointerToTuple{bp2}{t6}; 
+% pointers for key = 5
+\bucketPointerToTuple{bp3}{t1};\bucketPointerToTuple{bp4}{t4};\bucketPointerToTuple{bp5}{t8}; 
+% pointers for key = 7
+\bucketPointerToTuple{bp6}{t2};
+% pointers for key = 11
+\bucketPointerToTuple{bp7}{t5};\bucketPointerToTuple{bp8}{t7};\bucketPointerToTuple{bp9}{t9}; 
+% pointers for key = 13
+\bucketPointerToTuple{bp10}{t11};
+% pointers for key = 17
+\bucketPointerToTuple{bp11}{t10};
+\end{tikzpicture}}
+
+%
+% WHERE CLAUSE WITH bucket lists example
+%
+
+\newsavebox{\ListIntersectionExample}
+\savebox{\ListIntersectionExample}{%
+\scriptsize%
+\begin{tabular}{l | l | l | l}
+\multicolumn{4}{l}{\textbf{R}}\\
+\rowcolor{Gray}
+\hline
+$\boldsymbol{a}$ & $\boldsymbol{b}$ & $\boldsymbol{c}$ & $\boldsymbol{d}$ \\
+\hline
+Ana & 5 & 3 & CS \\
+\hline
+Bob & 8 & 7 & CS \\
+\hline
+Cal & 7 & 12 & EE \\
+\hline
+Dea & 7 & 7 & MA \\
+\hline
+Ela & 4 & 12 & CS \\
+\hline
+Fay & 7 & 13 & MA \\
+\hline
+Gil & 9 & 12 & CS \\
+\hline
+Han & 8 & 13 & EE \\
+\hline
+\end{tabular}
+}
+
+\newsavebox\RI
+\savebox{\RI}{
+    \clipbox{6 80 6 22.5}{\usebox\ListIntersectionExample}
+}
+\newsavebox\RII
+\savebox{\RII}{
+    \clipbox{6 68 6 34}{\usebox\ListIntersectionExample}
+}
+\newsavebox\RIII
+\savebox{\RIII}{
+    \clipbox{6 57 6 46}{\usebox\ListIntersectionExample}
+}
+\newsavebox\RIV
+\savebox{\RIV}{
+    \clipbox{6 46 6 56.5}{\usebox\ListIntersectionExample}
+}
+\newsavebox\RV
+\savebox{\RV}{
+    \clipbox{6 35 6 68}{\usebox\ListIntersectionExample}
+}
+\newsavebox\RVI
+\savebox{\RVI}{
+    \clipbox{6 23 6 79.5}{\usebox\ListIntersectionExample}
+}
+\newsavebox\RVII
+\savebox{\RVII}{
+    \clipbox{6 12 6 91}{\usebox\ListIntersectionExample}
+}
+\newsavebox\RVIII
+\savebox{\RVIII}{
+    \clipbox{6 1 6 102}{\usebox\ListIntersectionExample}
+}
+
+\newlength{\tempTupleWidth}
+\settowidth{\tempTupleWidth}{\usebox\RI}
+\setlength{\tupleWidth}{\dimexpr\tempTupleWidth+0.5pt}
+\setlength{\dataBlockWidth}{\dimexpr(\tupleWidth+1pt)\relax}
+\settoheight{\tupleHeight}{\usebox\RI}
+\setlength{\dataBlockHeight}{\dimexpr1pt+(\tupleHeight+0.5pt)*\the\numexpr\tuplesPerDataBlock\relax}
+\setlength{\bucketBlockHeight}{\dimexpr1pt+(\tupleHeight+0.5pt)*\the\numexpr\pointerPerBucketBlock\relax}
+\setlength{\indexBlockHeight}{\dimexpr1pt+(\tupleHeight+0.5pt)*\the\numexpr\keyPointerPairsPerIndexBlock\relax}
+
+
+\newsavebox{\whereClauseWithBuckets}
+\savebox{\whereClauseWithBuckets}{
+	    \begin{tikzpicture}
+    \dataBlock{data1}{0}{0};
+    \tupleFromBox{t1}{data1}{0}{\usebox\RI};
+    \tupleFromBox{t2}{data1}{1}{\usebox\RII};
+
+    \dataBlock{data2}{0}{-2};\linkDataBlocks{data1}{data2};
+    \tupleFromBox{t3}{data2}{0}{\usebox\RIII};
+    \tupleFromBox{t4}{data2}{1}{\usebox\RIV};
+
+    \dataBlock{data3}{0}{-4};\linkDataBlocks{data2}{data3};
+    \tupleFromBox{t5}{data3}{0}{\usebox\RV};
+    \tupleFromBox{t6}{data3}{1}{\usebox\RVI};
+
+    \dataBlock{data4}{0}{-6};\linkDataBlocks{data3}{data4};
+    \tupleFromBox{t7}{data4}{0}{\usebox\RVII};
+    \tupleFromBox{t8}{data4}{1}{\usebox\RVIII};
+
+    \node (tid1) [left=2.5pt of t1] {\alert{$t_1$}};
+    \node (tid2) [left=2.5pt of t2] {\alert{$t_2$}};
+    \node (tid3) [left=2.5pt of t3] {\alert{$t_3$}};
+    \node (tid4) [left=2.5pt of t4] {\alert{$t_4$}};
+    \node (tid5) [left=2.5pt of t5] {\alert{$t_5$}};
+    \node (tid6) [left=2.5pt of t6] {\alert{$t_6$}};
+    \node (tid7) [left=2.5pt of t7] {\alert{$t_7$}};
+    \node (tid8) [left=2.5pt of t8] {\alert{$t_8$}};
+
+
+    \node at (-9,0) {\small\texttt{IDX\_R\_b}};
+
+    \bucketBlock{bucket1}{-3}{0};
+    \bucketPointer{b1p1}{bucket1}{0};\node at (b1p1) {\small\alert{$t_5$}};
+    \bucketPointer{b1p2}{bucket1}{1};\node at (b1p2) {\small\alert{$t_1$}};
+    \bucketPointer{b1p3}{bucket1}{2};\node at (b1p3) {\small\alert{$t_3$}};
+    \bucketPointer{b1p4}{bucket1}{3};\node at (b1p4) {\small\alert{$t_4$}};
+    \bucketPointer{b1p5}{bucket1}{4};\node at (b1p5) {\small\alert{$t_6$}};
+    \bucketPointer{b1p6}{bucket1}{5};\node at (b1p6) {\small\alert{$t_2$}};
+    \bucketPointer{b1p7}{bucket1}{6};\node at (b1p7) {\small\alert{$t_8$}};
+    \bucketPointer{b1p8}{bucket1}{7};\node at (b1p8) {\small\alert{$t_7$}};
+
+
+    \indexBlock{IDX_R_b1}{-6}{0};
+    \keyPointer{kbp1}{IDX_R_b1}{0}{4};\KPtoBucketPointer{kbp1}{b1p1};
+    \keyPointer{kbp2}{IDX_R_b1}{1}{5};\KPtoBucketPointer{kbp2}{b1p2};
+    \keyPointer{kbp3}{IDX_R_b1}{2}{7};\KPtoBucketPointer{kbp3}{b1p3};
+    
+    \indexBlock{IDX_R_b2}{-6}{-2};\linkIndexBlocks{IDX_R_b1}{IDX_R_b2};
+    \keyPointer{kbp4}{IDX_R_b2}{0}{8};\KPtoBucketPointer{kbp4}{b1p6};
+    \keyPointer{kbp5}{IDX_R_b2}{1}{9};\KPtoBucketPointer{kbp5}{b1p8};
+
+
+    \indexBlock{IDX_R_b3}{-9}{-1};
+    \keyPointer{s1}{IDX_R_b3}{0}{4};\KPtoBucketPointer{s1}{kbp1};
+    \keyPointer{s2}{IDX_R_b3}{1}{8};\KPtoBucketPointer{s2}{kbp4};
+    
+
+% %
+% % copied the macros here and modified them so that the 
+% % index looks like a B+ tree instead of a flat index
+% %
+% \node (IDX_R_b3) at (-9,-1) [indexBlockBox] {};
+% \node (kbp6) at ([xshift=1pt,yshift=\dimexpr -1pt-(\tupleHeight+0.5pt)*0]{IDX_R_b3}.north west) [anchor=north west,indexKeyBox] {8};
+% \node (ptr1) [right = -0.5pt of {kbp6}] [keyPointerPointerBox] {};
+% \node (ptr2) [below = 0.1pt of ptr1] [keyPointerPointerBox] {};
+% \draw [*->,>=stealth'] ([xshift=10pt,yshift=0em]{ptr1}.west) to[out=0,in=180] (IDX_R_b1.west);
+% \draw [*->,>=stealth'] ([xshift=10pt,yshift=0em]{ptr2}.west) to[out=0,in=180] (IDX_R_b2.west);
+% %
+% %
+% %
+
+
+
+    \node at (-9,-6) {\small\texttt{IDX\_R\_c}};
+
+    \bucketBlock{bucket2}{-3}{-5};
+    \bucketPointer{b2p1}{bucket2}{0};\node at (b2p1) {\small\alert{$t_1$}};
+    \bucketPointer{b2p2}{bucket2}{1};\node at (b2p2) {\small\alert{$t_2$}};
+    \bucketPointer{b2p3}{bucket2}{2};\node at (b2p3) {\small\alert{$t_4$}};
+    \bucketPointer{b2p4}{bucket2}{3};\node at (b2p4) {\small\alert{$t_3$}};
+    \bucketPointer{b2p5}{bucket2}{4};\node at (b2p5) {\small\alert{$t_7$}};
+    \bucketPointer{b2p6}{bucket2}{5};\node at (b2p6) {\small\alert{$t_5$}};
+    \bucketPointer{b2p7}{bucket2}{6};\node at (b2p7) {\small\alert{$t_6$}};
+    \bucketPointer{b2p8}{bucket2}{7};\node at (b2p8) {\small\alert{$t_8$}};
+
+    \indexBlock{IDX_R_c}{-7}{-6};
+    \keyPointer{kcp1}{IDX_R_c}{0}{3};\KPtoBucketPointer{kcp1}{b2p1};
+    \keyPointer{kcp2}{IDX_R_c}{1}{7};\KPtoBucketPointer{kcp2}{b2p2};
+    \keyPointer{kcp3}{IDX_R_c}{2}{12};\KPtoBucketPointer{kcp3}{b2p4};
+    \keyPointer{kcp4}{IDX_R_c}{3}{13};\KPtoBucketPointer{kcp4}{b2p7};
+    \end{tikzpicture}
+}

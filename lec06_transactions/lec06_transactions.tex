@@ -1,0 +1,34 @@
+\documentclass[xcolor={usenames,dvipsnames}
+ 	,handout
+]{beamer}
+%
+% ugly hack referring to the slides folder. Works for me.
+%
+\makeatletter
+\def\input@path{{/Users/denilson/teaching/cmput391/git-slides/}}
+\makeatother
+
+\input{cmput391macros}
+\input{transactions_macros}
+
+\title{Overview of Transaction Processing}
+
+\begin{document}
+
+\frame{\maketitle}
+
+\input{intro}
+
+\section{Transaction Execution}
+\input{execution}
+
+\section{Logging and Crash Recovery}
+\input{logging_atomicity_durability}
+
+\section{Isolation}
+\input{isolation}
+
+\section{Practical Considerations}
+\input{practical_issues}
+
+\end{document}

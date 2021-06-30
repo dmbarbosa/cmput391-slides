@@ -1,0 +1,232 @@
+%!TEX root = lec05_query_processing.tex
+
+%
+% -----------------------------------------------------------------------------------------------
+%
+\begin{frame}
+
+Cost-based query optimizers need to consider a large number of alternative plans to find the one with the least estimated costs.
+\begin{enumerate}[(1),topsep=-0.5em,noitemsep]
+\item The more algorithms and kinds of indexes the DBMS has, the bigger the search space becomes!
+
+\item The optimizer cannot take longer than what a ``good enough'' plan would!
+\end{enumerate}
+ 
+Therefore, many DBMSs use both \alert{query rewriting} strategies and heuristic ``rules-of-thumb'' instead of considering all possible alternatives.
+
+\vskip1em
+
+We have seen many heuristic optimizations already, and we will look at a few more next.
+\end{frame}
+
+
+\begin{frame}[fragile]{Query Rewriting}
+
+\textbf{Goal}: either \alert{change the SQL query itself} or the query plan (using \blue{algebraic equivalence} rules from the algebra) in order to simplify the execution of the query.
+
+\vskip1em
+
+Some algebraic rewrite rules are guaranteed to never make the plan worse and are always applied.
+
+\begin{enumerate}[label=(\arabic*)]
+\item ``Push down'' selections.
+
+\item Rewrite intersections and unions as queries with conjunctions or disjunctions of predicates.
+\end{enumerate}
+\end{frame}
+
+
+
+
+\newsavebox{\rewriteExampleONE}
+\begin{lrbox}{\rewriteExampleONE}
+\begin{lstlisting}[style=SQL,escapechar=$]
+SELECT m.director, m.title, m.year
+FROM Movie $\alert{m}$
+WHERE m.imdb 
+      IN (SELECT MAX(imdb)
+         FROM Movie
+         WHERE director=$\alert{m}$.director);
+\end{lstlisting}
+\end{lrbox}
+
+
+\newsavebox{\rewriteExampleTWO}
+\begin{lrbox}{\rewriteExampleTWO}
+\begin{lstlisting}[style=SQL,escapechar=$]
+SELECT m.director, m.title, m.year
+FROM Movie m
+WHERE m.$\blue{diector} \alert{||}$ m.imdb 
+      IN (SELECT $\blue{diector} \alert{||}$ MAX(imdb)
+         FROM Movie
+         GROUP BY $\blue{director}$);
+\end{lstlisting}
+\end{lrbox}
+
+
+\begin{frame}[fragile]{Query Rewriting: De-Correlating Nested Queries}
+
+A correlated nested query needs to be evaluated once for every tuple in the outer query, which can be very slow.
+
+But it is sometimes possible to materialize the result of the entire nested query once, and then use a regular join/semi-join algorithm to compute the final answer.
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+\scalebox{0.75}{\usebox{\rewriteExampleONE}}
+\end{column}
+\begin{column}{0.5\textwidth}
+\scalebox{0.75}{\usebox{\rewriteExampleTWO}}
+\end{column}
+\end{columns}
+
+
+\end{frame}
+
+
+
+\begin{frame}[fragile]{Query Rewrite: Flattening Nested Queries}
+
+Instead of having the optimizer deal with every nuance of SQL, it is best to simplify complex SQL and \textbf{re-use} optimization code for simpler queries.
+
+The \lstinline[style=SQL]!IN! operator (a semi-join) can be rewritten as a regular join:
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.4\textwidth}
+\begin{lstlisting}[style=SQL]
+SELECT director
+FROM Movie
+WHERE year=2019 AND title 
+      IN (SELECT film
+         FROM Guide
+         WHERE start>1100);
+\end{lstlisting}
+\end{column}
+\begin{column}{0.4\textwidth}
+\begin{lstlisting}[style=SQL]
+SELECT m.director
+FROM Movie m, Guide g
+WHERE m.year=2019 
+   AND m.year=g.year
+   AND m.title=g.film 
+   AND g.start>1100;
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Query Rewrite: Restricting Nested Queries}
+
+THe DBMS can exploit primary/foreign key dependencies between tables to further restrict nested queries, reducing the number of tuples that need to be joined.
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.4\textwidth}
+\begin{lstlisting}[style=SQL]
+SELECT director
+FROM Movie
+WHERE year=2019 AND title 
+      IN (SELECT film
+         FROM Guide
+         WHERE start>1100);
+\end{lstlisting}
+\end{column}
+\begin{column}{0.4\textwidth}
+\begin{lstlisting}[style=SQL]
+SELECT director
+FROM Movie
+WHERE year=2019 AND title 
+      IN (SELECT film
+         FROM Guide
+         WHERE start>1100
+           -:AND year=2019:-);
+\end{lstlisting}
+\end{column}
+\end{columns}
+\end{frame}
+
+
+
+\begin{frame}[fragile]{``Rule-of-Thumb'' Optimizations}
+
+DBMSs will attempt to reduce the time to execute a query in every way possible. When choosing a DBMS, you should look the space of optimizations and improvements that they do.
+
+For instance, instead of evaluating all atomic predicates in the \lstinline[style=SQL]!WHERE! clause, the DBMS can simplify the logical expression so that it can stop evaluating atoms when each clause is satisfied or falsified.
+
+\vskip1em
+
+\begin{center}
+\begin{lstlisting}[style=SQL]
+WHERE ... m.director='Kubrick' AND c.actor='Tom Cruise' ...
+      OR NOT (m.year=2014 AND m.imdb<7)
+\end{lstlisting}
+\end{center}
+
+Can be rewritten as:
+
+\begin{lstlisting}[style=SQL]
+m.year <> 2014 OR m.imdb >= 7 OR 
+    (m.director='Kubrick' AND c.actor='Tom Cruise')!
+\end{lstlisting}
+
+
+\end{frame}
+
+
+
+\begin{frame}{Join Ordering}
+
+The dynamic-programming join ordering algorithm we considered finds the optimal ordering and thus requires exponential time in the worst case.
+
+Most DBMSs use reasonable approximation algorithms that run in polynomial time. Although they will not give the best ordering in many cases, they will still give good orderings most of the time.
+
+\begin{block}{SQLite}
+SQLite uses a polynomial time algorithm for join ordering and uses the number of indexes on a table as its cost.
+\end{block}
+
+\end{frame}
+
+\begin{frame}[fragile]{Sort Intermediate Relations}
+If no suitable indexes exist to help with a query, a good strategy is to sort the results of the sub-expressions and answer the join using merge-sort in memory.
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.4\textwidth}
+\begin{lstlisting}[style=SQL]
+SELECT director
+FROM Movie
+WHERE year=2019 AND title 
+      IN (SELECT film
+         FROM Guide
+         WHERE start>1100);
+\end{lstlisting}
+\end{column}
+\begin{column}{0.4\textwidth}
+\scalebox{1}{
+     \begin{tikzpicture}[align=center,node distance=0.825cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+    \node (1) at (0,0) {$\pi_{\texttt{director}}$};
+    \node (2) [below of=1] {$\ltimes_{\texttt{title}=\texttt{film}}$};
+    \node (3) [below left of = 2,xshift=-2em] {$\sigma_{\texttt{year}=2019}$};
+    \node (4) [below right of = 2,xshift=2em] {\lstinline[style=SQL]{-:sort_by(film):-}};
+    \node (4b) [below of= 4] {$\pi_{\texttt{film}}$};
+    \node (5) [below of=4b] {$\sigma_{\texttt{start>1100}}$};
+    \node (6) [below of=5] {\lstinline[style=SQL]!scan(Guide)!};
+    \node (7) [below of=3] {\lstinline[style=SQL]!scan(Movie)!};
+    \path[->]
+        (2) edge (1)
+        (3) edge (2)
+        (4) edge (2)
+        (4b) edge (4)
+        (5) edge (4b)
+        (6) edge (5)
+        (7) edge (3);
+\end{tikzpicture}%
+}
+\end{column}
+\end{columns}
+\end{frame}
+
+  

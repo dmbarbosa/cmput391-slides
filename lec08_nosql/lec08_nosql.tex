@@ -1,0 +1,73 @@
+\documentclass[xcolor={usenames,dvipsnames}
+    ,handout
+]{beamer}
+
+%
+% ugly hack referring to the slides folder. Works for me.
+%
+\makeatletter
+\def\input@path{{/Users/denilson/teaching/cmput391/git-slides/}}
+\makeatother
+
+\input{cmput391macros}
+
+\title{High Performance Databases and ``NoSQL''}
+
+\begin{document}
+
+\frame{\maketitle}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}{What is meant by NoSQL?}
+
+\begin{block}{Is SQL a bad thing?}
+\begin{columns}[onlytextwidth]
+\begin{column}{0.75\textwidth}
+The ``NoSQL movement'' started as frontal opposition to relational database systems in general. 
+\end{column}
+\begin{column}{0.25\textwidth}
+\begin{center}
+\includegraphics[width=0.75\textwidth]{./figures/noSQL.pdf}
+\end{center}
+\end{column}
+\end{columns}
+\end{block}
+
+Over time, adopters of the movement realized that abandoning all of the relational technologies meant giving up too much.
+
+Today, NoSQL is often used to mean \alert{Not Only} SQL. In other words, their proponents advocate using systems that support (at least a subset of) SQL in addition to other access methods and languages.
+
+\end{frame}
+
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+\section{High Performance Computing Architectures}
+\input{hpc_architectures}
+
+\section{Partitioned Table Stores}
+\input{table_stores}
+
+\section{Consistency and Transaction Processing}
+\input{transactions}
+
+\section{Key/Value Stores}
+\input{key_value_stores}
+
+\section{Distributed File Systems and Map/Reduce}
+\input{map_reduce}
+
+\section{Parting Thoughts}
+
+\begin{frame}
+
+High Performance Computing architectures, in particular, shared-nothing clusters of computers organized into a ``cloud'', are becoming the norm in supporting database applications.
+
+Two key advantages of this approach are distributing the data across nodes to reduce the risk of data loss and increase availability of the data.
+
+The compromise is that updates to the data require a lot more effort: multiple nodes need to coordinate via the network, which is much slower.
+
+As a result, most NoSQL systems do not support complex constraints and do not offer full SQL support.
+\end{frame}
+\end{document}

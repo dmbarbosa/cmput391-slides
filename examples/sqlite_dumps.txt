@@ -1,0 +1,106 @@
+
+CREATE TABLE Movie (title CHAR(20), year INT, imdb FLOAT, director CHAR(20), PRIMARY KEY (title, year), CHECK(imdb >= 0 AND imdb <= 10));
+CREATE TABLE Cinema (name CHAR(20), address CHAR(100), PRIMARY KEY(name));
+CREATE TABLE Cast (title CHAR(20), year INT, actor CHAR(20), role CHAR(20),
+FOREIGN KEY (title, year) REFERENCES Movie(title, year));
+CREATE TABLE Guide (theater CHAR(20), film CHAR(20), year INT, start INT, FOREIGN KEY (theater) REFERENCES Cinema(name), FOREIGN KEY (film, year) REFERENCES Movie(title, year));
+
+
+INSERT INTO Movie VALUES('Ghostbusters',1984,7.8,'Ivan Reitman');
+INSERT INTO Movie VALUES('Big',1988,7.3,'Penny Marshall');
+INSERT INTO Movie VALUES('Lost in Translation',2003,7.8,'Sofia Coppola');
+INSERT INTO Movie VALUES('Wadjda',2012,8.1,'Haifaa al-Mansour');
+INSERT INTO Movie VALUES('Ghostbusters',2016,5.3,'Paul Feig');
+
+INSERT INTO Cinema VALUES('Garneau','8712 109 St, Edmonton');
+INSERT INTO Cinema VALUES('Princess','10337 82 Ave, Edmonton');
+INSERT INTO Cinema VALUES('Landmark','10200 102 Ave, Edmonton');
+
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'Bill Murray','Dr. Venkman');
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'Sigourney Weaver','Dana Barret');
+INSERT INTO "Cast" VALUES('Big',1988,'Tom Hanks','Josh');
+INSERT INTO "Cast" VALUES('Big',1988,'Elisabeth Perkins','Susan');
+INSERT INTO "Cast" VALUES('Lost in Translation',2003,'Bill Murray','Bob Harris');
+INSERT INTO "Cast" VALUES('Wadjda',2012,'Waad Mohammed','Wadjda');
+INSERT INTO "Cast" VALUES('Ghostbusters',2016,'Dan Aykroyd','Cabbie');
+INSERT INTO "Cast" VALUES('Ghostbusters',2016,'Sigourney Weaver','Dana Barret');
+
+
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'Dan Aykroyd','Ray Stantz');
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'Ernie Hudson','Winston Zeddemore');
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'Harold Ramis','Egon Spengler');
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'Rick Moranis','Louis Tully');
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'Annie Potts','Janine Melnitz');
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'William Atherton','Walter Peck');
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'David Margulies','Mayor');
+
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'Alice Drummond','Librarian');
+INSERT INTO "Cast" VALUES('Ghostbusters',1984,'Tom McDermott','Archbishop');
+
+
+
+
+INSERT INTO Guide VALUES('Garneau','Ghostbusters',1984,1140);
+INSERT INTO Guide VALUES('Garneau','Ghostbusters',2016,1290);
+INSERT INTO Guide VALUES('Princess','Wadjda',2012,1260);
+
+
+CREATE TABLE Influence(source text, target text);
+INSERT INTO Influence VALUES('Assembly','Speedcoding');
+INSERT INTO Influence VALUES('Speedcoding','FORTRAN');
+INSERT INTO Influence VALUES('Speedcoding','C');
+INSERT INTO Influence VALUES('FORTRAN','C');
+INSERT INTO Influence VALUES('C','C++');
+INSERT INTO Influence VALUES('Smalltalk','ADA');
+INSERT INTO Influence VALUES('ADA','C++');
+INSERT INTO Influence VALUES('C','ADA');
+INSERT INTO Influence VALUES('ADA','PL/SQL');
+
+
+CREATE TABLE InspireStep1(lang1 text, lang2 text);
+
+INSERT INTO InspireStep1 SELECT * FROM (
+SELECT source AS lang1, target AS lang2
+    FROM Influence
+  UNION
+    SELECT edge.source, path.lang2
+    FROM InspireStep1 path, Influence edge
+    WHERE edge.target=path.lang1
+);
+
+
+
+
+
+
+% drop table airport;
+% CREATE TABLE Airport(name TEXT, 
+% 	city TEXT,
+% 	country TEXT,
+% 	IATA CHAR (3),
+% 	ICAO CHAr (4),
+% 	callsign CHAR(4),
+% 	lat FLOAT,
+% 	lon FLOAT,
+% 	timezone TEXT,
+% 	DST CHAR (1),
+% 	CHECK (IATA IS NOT NULL OR ICAO IS NOT NULL), 
+% 	CHECK (DST IN ('E', 'A', 'S', 'O', 'Z', 'U')),
+% 	CHECK (callsign in (CASE WHEN IATA IS NOT NULL THEN IATA ELSE ICAO END)));
+
+
+
+BEGIN TRANSACTION;
+CREATE TABLE edge(source text, target text, distance int);
+INSERT INTO edge VALUES('C','A',3);
+INSERT INTO edge VALUES('A','C',3);
+INSERT INTO edge VALUES('A','B',5);
+INSERT INTO edge VALUES('B','A',5);
+INSERT INTO edge VALUES('A','D',6);
+INSERT INTO edge VALUES('D','A',6);
+INSERT INTO edge VALUES('D','B',4);
+INSERT INTO edge VALUES('B','D',4);
+INSERT INTO edge VALUES('D','E',7);
+INSERT INTO edge VALUES('E','D',7);
+INSERT INTO edge VALUES('B','E',8);
+INSERT INTO edge VALUES('E','B',8);

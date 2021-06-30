@@ -1,0 +1,159 @@
+\newlength{\hashvalueWidth}
+\setlength{\hashvalueWidth}{\widthof{~0000~}\relax}
+
+\newlength{\hashvalueHeight}
+\setlength{\hashvalueHeight}{1.45em}
+
+\newlength{\pointerWidth}
+\setlength{\pointerWidth}{0.75\hashvalueWidth}
+
+\newlength{\dataBoxWidth}
+\setlength{\dataBoxWidth}{2\hashvalueWidth}
+
+\newlength{\dynamicHashBlockWidth}
+\setlength{\dynamicHashBlockWidth}{\dimexpr 4pt + \hashvalueWidth + \dataBoxWidth}
+
+\newlength{\staticHashBlockWidth}
+\setlength{\staticHashBlockWidth}{\dimexpr 2pt + \dataBoxWidth}
+
+\newlength{\hashBlockHeight}
+\setlength{\hashBlockHeight}{\dimexpr 3pt + \hashvalueHeight*2\relax}
+
+\tikzset{
+	dynamicHashBlock/.style={
+		anchor=north west,
+		draw,rectangle,
+		inner sep=0, outer sep=0,
+		minimum width=\dynamicHashBlockWidth,minimum height=\hashBlockHeight
+	}
+}
+
+\tikzset{
+	staticHashBlock/.style={
+		anchor=north west,
+		draw,rectangle,
+		inner sep=0, outer sep=0,
+		minimum width=\staticHashBlockWidth,minimum height=\hashBlockHeight
+	}
+}
+
+\tikzset{
+	pointerBox/.style={
+		anchor=north west, 
+		draw, rectangle, 
+		minimum width=\pointerWidth, minimum height=\hashvalueHeight,
+		fill=snow
+	}
+}
+
+\tikzset{
+	dataBox/.style={
+		anchor=north west, 
+		draw, rectangle, 
+		inner sep=0,
+		minimum width=\dataBoxWidth,minimum height=\hashvalueHeight,
+		fill=gray!10
+	}
+}
+
+
+\tikzset{
+	hashCodeBox/.style={
+		minimum height=\hashvalueHeight,anchor=north west,%draw
+	}
+}
+
+% #1     --> block id
+% #2, #3 --> block top-left coordinates
+% #4     --> Number of bits used
+\def\extensibleHashBlock#1#2#3#4{
+	\node ({#1}) at ({#2},{#3}) [anchor=north west, dynamicHashBlock] {};
+	\node [color=accent,above right=0.5pt and 0pt of {#1}.north west,draw,minimum width=1.5em]{\footnotesize #4};
+}
+
+% #1     --> block id
+% #2, #3 --> block top-left coordinates
+% #4     --> logical bucket
+\def\linearHashBlock#1#2#3#4{
+	\node ({#1}) at ({#2},{#3}) [anchor=north west, dynamicHashBlock] {};
+	\node [left= 1em of #1] {#4};
+}
+
+% #1     --> block id
+% #2, #3 --> block top-left coordinates
+% #4     --> logical bucket
+\def\missingLinearHashBlock#1#2#3#4{
+	\node ({#1}) at ({#2},{#3}) [anchor=north west, dynamicHashBlock,dashed,fern] {};
+	\node [left= 1em of #1] {#4};
+}
+
+
+% #1     --> block id
+% #2, #3 --> block top-left coordinates
+% #4     --> bucket id
+\def\staticHashBlock#1#2#3{
+	\node ({#1}) at ({#2},{#3}) [anchor=north west, staticHashBlock] {};
+}
+
+
+\newcounter{tIdCnt}
+
+% #1  --> block id
+% #2  --> relative position (1st, 2nd)
+% #3  --> hash key
+% #4  --> tuple  
+\def\dynamicHashBlockEntry#1#2#3#4{
+	\pgfmathsetmacro{\NKEYS}{#2}
+	\node (t) [hashCodeBox,below right=0.5pt and 0.5pt of {#1}.north west,
+				yshift = - \dimexpr 0.5pt + (1pt + 1.4em) * \NKEYS] {#3};
+	\node (t1) [right=0.5pt of t.north east,dataBox] {{#4}};
+}
+
+% #1     --> block id
+% #2     --> relative position (1st, 2nd)
+\def\staticHashBlockEntry#1#2#3{
+
+	\stepcounter{tIdCnt}
+
+	\pgfmathsetmacro{\NKEYS}{#2}
+	\node (t) [dataBox,below right=0.5pt and 0.75pt of {#1}.north west,
+				yshift = - \dimexpr 0.5pt + (1pt + 1.4em) * \NKEYS] {\small$t_{\arabic{tIdCnt}}$};
+}
+
+
+% #1     --> id
+% #2, #3 --> coordinates
+% #4     --> i= ?
+\def\directory#1#2#3#4{
+	\node ({#1}) at ({#2},{#3}) [pointerBox] {};
+	\node [above=1em of #1] {$i={#4}$};
+
+	% draw the directory boxes
+	\pgfmathsetmacro{\N}{(2^#4)-1}
+	\pgfmathsetbasenumberlength{#4} % set the number of digits in binary	
+	\pgfmathdectobase\binaryIndex{0}{2}
+	\node [left= 0.5em of #1] {\binaryIndex};
+
+	\foreach \i in {1,...,\N}{
+		\pgfmathdectobase\binaryIndex{\i}{2}
+		\node (t) [below=0pt of #1.north west,pointerBox,yshift=-\dimexpr ((1pt+\hashvalueHeight) * \i)\relax] {};
+		\node [left= 0.5em of t] {\binaryIndex};
+	}	
+}
+
+% #1 --> id of node with directory
+% #2 --> # of pointer box (0, 1, 2)
+% #3 --> id of target node/object
+\def\hashLink#1#2#3{
+	\draw [*->,>=stealth'] 
+			([yshift=-\dimexpr((1pt+\hashvalueHeight) * #2),xshift=-0.6\pointerWidth]#1.east) 
+			to [out=0,in=180]  (#3);
+}
+
+% #1, #2   --> coordinates
+% #3,#4,#5 --> values of i, n, r
+\def\linearHashVariables#1#2#3#4#5{
+	\node (t) at ({#1},{#2}) [anchor=north west] {$i={#3}$};
+	\node (t1) [below=1em of t] {$n={#4}$};
+	\node (t2) [below=1em of t1] {$r={#5}$};
+}

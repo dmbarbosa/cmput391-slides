@@ -1,0 +1,583 @@
+%
+% Key-pointer measurements
+%
+\newlength{\indexKeyBoxWidth}
+\setlength{\indexKeyBoxWidth}{\dimexpr 2em\relax}
+
+\newlength{\pointerBoxWidth}
+\setlength{\pointerBoxWidth}{\dimexpr 2.5em\relax}
+
+%
+% Tuple measurements
+%
+\newlength{\tupleHeight}
+\setlength{\tupleHeight}{\dimexpr 1.1em\relax}
+
+\newlength{\dummyTupleGreyBoxWidth}
+\setlength{\dummyTupleGreyBoxWidth}{\dimexpr 5em\relax}
+
+%
+% Data Block measurements
+%
+
+\newlength{\tupleWidth}
+\setlength{\tupleWidth}{\dimexpr(\indexKeyBoxWidth+\dummyTupleGreyBoxWidth)\relax}
+
+\newlength{\dataBlockWidth}
+\setlength{\dataBlockWidth}{\dimexpr(\tupleWidth+1pt)\relax}
+
+\def\tuplesPerDataBlock{2}
+
+\newlength{\dataBlockHeight}
+\setlength{\dataBlockHeight}{\dimexpr1pt+(\tupleHeight+0.5pt)*\the\numexpr\tuplesPerDataBlock\relax}
+
+%
+% Index block measurements
+%
+\newlength{\indexBlockWidth}
+\setlength{\indexBlockWidth}{\dimexpr(\indexKeyBoxWidth+\pointerBoxWidth+1pt)\relax}
+
+\def\keyPointerPairsPerIndexBlock{4}
+
+\newlength{\indexBlockHeight}
+\setlength{\indexBlockHeight}{\dimexpr1pt+(\tupleHeight+0.5pt)*\the\numexpr\keyPointerPairsPerIndexBlock\relax}
+
+\newlength{\indexBlockPointerOffset}
+\setlength{\indexBlockPointerOffset}{\dimexpr(\indexBlockHeight-1em-1pt)\relax}
+
+
+\tikzset{ % same as tuple, except for the anchor part
+	indexKeyBox/.style={
+		draw,rectangle,minimum width=\indexKeyBoxWidth,minimum height=\tupleHeight,inner sep=0,outer sep=0,font=\footnotesize
+	}
+}
+
+\tikzset{
+	tupleGrayBox/.style={
+		draw, rectangle, minimum width=\dummyTupleGreyBoxWidth,minimum height=\tupleHeight,outer sep=0,fill=tupleBoxColor
+	}
+}
+
+% #1 --> block id
+% #2,#3 --> data block id and order inside block
+% #4 --> key
+\def\tuple#1#2#3#4{
+  \node ({#1}) at ([xshift=1pt,yshift=\dimexpr -1pt-(\tupleHeight+0.5pt)*#3]{#2}.north west) [anchor=north west,indexKeyBox] {{#4}};
+  \node [right = -0.5pt of {#1}] [tupleGrayBox] {};
+}
+
+
+% #1 --> block id
+% #2,#3 --> data block id and order inside block
+% #4 --> key
+\def\tupleFromBox#1#2#3#4{
+  \node ({#1}) at ([xshift=1pt,yshift=\dimexpr -1pt-(\tupleHeight+0.5pt)*#3]{#2}.north west) [anchor=north west,indexKeyBox] {{#4}};
+}
+
+
+% --------------------------------- index key-pointer tuples
+
+\tikzset{
+	keyPointerValue/.style={
+		anchor=north west,
+		draw,rectangle,minimum width=\indexKeyBoxWidth,minimum height=\tupleHeight,inner sep=0,outer sep=0,font=\footnotesize
+	}
+}
+
+\tikzset{ 
+	keyPointerPointerBox/.style={
+		draw, rectangle, minimum width=\pointerBoxWidth,minimum height=\tupleHeight,outer sep=0,fill=snow
+	}
+}
+
+
+% #1     --> id of key-pointer (i.e., the node with the value)
+% #2, #3 --> id of indexBlock and ordinal within block
+% #4     --> value in the attribute of the tuple
+\def\keyPointer#1#2#3#4{
+  \node ({#1}) at ([xshift=1pt,yshift=\dimexpr -1pt-(\tupleHeight+0.5pt)*#3]{#2}.north west) [anchor=north west,indexKeyBox] {{#4}};
+  \node [right = -0.5pt of {#1}] [keyPointerPointerBox] {};
+}
+
+
+% --------------------------------- blocks of the data file
+
+\tikzset{
+	dataBlockBox/.style={
+		xshift=-0.1em,yshift=0.1em,anchor=north west,draw,rectangle,minimum width=\dataBlockWidth,minimum height=\dataBlockHeight
+	}
+}
+
+\tikzset{
+	dataBlockPointerBox/.style={
+		yshift=0.125pt,
+		outer sep=0,anchor=south west, draw, rectangle, 
+		minimum width=1em, minimum height=1em,fill=snow
+	}
+}
+
+% #1     --> block id
+% #2, #3 --> block top-left coordinates
+\def\dataBlock#1#2#3{
+	\node ({#1}) at ({#2},{#3}) [dataBlockBox] {};
+	\node at ({#1}.south east) [dataBlockPointerBox] {};
+}
+
+% #1     --> block id
+% #2     --> id of block ``below'' #1
+\def\linkDataBlocks#1#2{
+	\draw [*->,>=stealth'] ([xshift=5pt,yshift=7pt]{#1}.south east) to[out=270,in=90] ([xshift=-10pt]#2.north east);
+}
+
+% --------------------------------- blocks of the index file
+
+
+\tikzset{
+	indexBlockBox/.style={
+		xshift=-0.1em,yshift=0.1em,anchor=north west,draw,rectangle,minimum width=\indexBlockWidth,minimum height=\indexBlockHeight
+	}
+}
+
+\tikzset{
+	indexBlockPointerBox/.style={
+		xshift=0.375pt,
+		anchor=south east, draw, rectangle, minimum width=1em, minimum height=1em,fill=snow
+	}
+}
+
+% #1     --> block id
+% #2, #3 --> block top-left coordinates
+% #4     --> id of the first key-pointer inside the block
+% #5     --> value of the first key
+\def\indexBlock#1#2#3{
+	\node ({#1}) at ({#2},{#3}) [indexBlockBox] {};
+	\node at ({#1}.south west) [indexBlockPointerBox] {};
+}
+
+% #1     --> block id
+% #2     --> id of block ``below'' #1
+\def\linkIndexBlocks#1#2{
+	\draw [*->,>=stealth'] ([xshift=-5pt,yshift=7pt]{#1}.south west) to[out=270,in=90] ([xshift=10pt]#2.north west);
+}
+
+% #1 --> key-pointer id
+% #2 --> tuple id
+\def\KPtoTuple#1#2{
+	\draw [*->,>=stealth'] ([xshift=30pt,yshift=0em]{#1}.west) to[out=0,in=180] (#2.west);
+}
+
+
+
+
+%%%%% MACROS FOR SPARSE INDEX WITH POINTERS TO BLOCKS
+
+\tikzset{ 
+	sparseKeyPointerPointerBox/.style={
+		draw, rectangle, minimum width=1.1em,minimum height=\tupleHeight, fill=snow
+	}
+}
+
+% draws two rectangles, one with an attribute value, the other with the pointer
+%
+% #1     --> id of key-pointer (i.e., the node with the value)
+% #2, #3 --> coordinages of top-left corner of node with tuple value
+% #4     --> value in the attribute of the tuple
+\def\sparseKeyPointer#1#2#3#4{
+  \node ({#1}) at ({#2},{#3}) [keyPointerValue] {\tiny{#4}} ;
+  \node [right = -0.5pt of {#1}] [sparseKeyPointerPointerBox] {};
+}
+
+\tikzset{
+	sparseIndexBlockBox/.style={
+		xshift=-0.1em,yshift=0.1em,anchor=north west,draw,rectangle,minimum width=3.3em,minimum height=4.6em
+	}
+}
+
+% #1     --> block id
+% #2, #3 --> block top-left coordinates
+% #4     --> id of the first key-pointer inside the block
+% #5     --> value of the first key
+\def\sparseIndexBlock#1#2#3#4#5{
+	\node ({#1}) at ({#2},{#3}) [sparseIndexBlockBox] {};
+	\node at ({#2},{#3}) [indexBlockPointerBox] {};
+	\sparseKeyPointer{{#4}}{{#2}}{{#3}}{{#5}};
+}
+
+% #1     --> block id
+% #2     --> id of block ``above'' this one
+% #3, #4 --> coordinates of this block
+% #5     --> id of the first tuple inside the block
+% #6     --> value of the first tuple
+\def\sparseIndexBlockBelow#1#2#3#4#5#6{
+	\node ({#1}) at ({#3},{#4}) [sparseIndexBlockBox] {};
+	\node at ({#3},{#4}) [indexBlockPointerBox] {};
+	\sparseKeyPointer{{#5}}{{#3}}{{#4}}{{#6}};
+	\draw [*->,>=stealth'] ([xshift=-5pt,yshift=7pt]{#2}.south west) to[out=270,in=90] ([xshift=10pt]#1.north west);
+}
+
+% #1 --> key-pointer id
+% #2 --> tuple id
+\def\sparseKPtoTuple#1#2{
+	\draw [*->,>=stealth'] ([xshift=22.5pt,yshift=0em]{#1}.west) to[out=0,in=180] (#2.west);
+}
+
+
+
+%================================ illustration of multilevel indexes
+
+\def\denseIndexMultilevel#1#2#3#4{
+    \node ({#1}) at ({#2},{#3}) [font=\footnotesize,draw,fill=accent!25,rectangle,minimum width=2.5em,minimum height=1em] {{#4}};
+    \node (t) [below = 1em of {#1}] [rectangle,minimum width=2.5em] {};
+    \draw [->,>=stealth'] ({#1}) -- (t);
+    \draw [->,>=stealth'] ([xshift=-2pt]{#1}.south) -- ([xshift=-6pt]t.north);
+    \draw [->,>=stealth'] ([xshift=2pt]{#1}.south) -- ([xshift=6pt]t.north);
+    \draw [->,>=stealth'] ([xshift=-6pt]{#1}.south) -- (t.north west);
+    \draw [->,>=stealth'] ([xshift=6pt]{#1}.south) -- (t.north east);
+}
+
+\def\denseIndexMultilevelAfter#1#2#3{
+    \node ({#1}) [right of= {#2}] [font=\footnotesize,draw,fill=accent!25,rectangle,minimum width=2.5em,minimum height=1em] {{#3}};
+        \node (t) [below = 1em of {#1}] [rectangle,minimum width=2.5em] {};
+    \draw [->,>=stealth'] ({#1}) -- (t);
+    \draw [->,>=stealth'] ([xshift=-2pt]{#1}.south) -- ([xshift=-6pt]t.north);
+    \draw [->,>=stealth'] ([xshift=2pt]{#1}.south) -- ([xshift=6pt]t.north);
+    \draw [->,>=stealth'] ([xshift=-6pt]{#1}.south) -- (t.north west);
+    \draw [->,>=stealth'] ([xshift=6pt]{#1}.south) -- (t.north east);
+}
+
+
+\newsavebox\genericDenseIndexWithNblocks
+\savebox{\genericDenseIndexWithNblocks}{
+\begin{tikzpicture}[
+	every node/.append style={node distance=4em},
+	every edge/.append style={>=stealth'}]
+\node at (-1.5,0) [color=accent,font=\footnotesize] {Index:};
+
+\denseIndexMultilevel{0}{0}{0}{$b_0$};
+\denseIndexMultilevelAfter{1}{0}{$b_1$};
+\denseIndexMultilevelAfter{2}{1}{$b_2$};
+\node (3) [right of=2] {...};
+\denseIndexMultilevelAfter{4}{3}{$b_{N-1}$};
+\denseIndexMultilevelAfter{5}{4}{$b_{N}$};
+
+\path [->] (0) edge (1) 
+   (1) edge (2)
+   (2) edge (3)
+   (3) edge (4)
+   (4) edge (5);
+\end{tikzpicture}
+}
+
+\newsavebox\genericMultilevelIndexSparseOnDense
+\savebox{\genericMultilevelIndexSparseOnDense}{
+\begin{tikzpicture}[
+	every node/.append style={node distance=4em},
+	every edge/.append style={>=stealth'}]
+\tikzset{
+    block/.style={font=\footnotesize,draw,fill=snow,rectangle,minimum width=2.5em,minimum height=1em}
+    }
+\tikzset{
+    sparseBlock/.style={font=\footnotesize,draw,fill=snow,rectangle,minimum width=2.5em,minimum height=1em}
+    }
+
+\node at (-1.5,0) [color=accent,font=\footnotesize] {\begin{minipage}{1cm}\baselineskip=0.75\baselineskip \centering
+Dense Index: \end{minipage}};
+
+\denseIndexMultilevel{0}{0}{0}{$b_0$};
+\denseIndexMultilevelAfter{1}{0}{$b_1$};
+\denseIndexMultilevelAfter{2}{1}{$b_2$};
+\node (3) [right of=2] {...};
+\denseIndexMultilevelAfter{4}{3}{$b_{N-1}$};
+\denseIndexMultilevelAfter{5}{4}{$b_{N}$};
+
+\path [->] (0) edge (1) 
+   (1) edge (2)
+   (2) edge (3)
+   (3) edge (4)
+   (4) edge (5);
+
+\node at (-1.5,1.5) [color=accent,font=\footnotesize] {\begin{minipage}{1cm}\baselineskip=0.75\baselineskip \centering
+Sparse Index: \end{minipage}};
+
+\node [sparseBlock] (6) [xshift=1em,above of=1] {$\mathit{b}_0$};
+\node (7) [xshift=1em,right of=6] {...};
+\node [sparseBlock] (8) [xshift=1em,right of=7] {$\mathit{b}_M$};
+
+\path [->] (6) edge (7)
+    (7) edge (8);
+
+\draw [->,>=stealth'] ([xshift=-9pt]6.south) to[out=270,in=90] ([xshift=2pt]0.north west);
+\draw [->,>=stealth'] ([xshift=-5pt]6.south) to[out=270,in=90] ([xshift=2pt]1.north west);
+\draw [->,>=stealth'] ([xshift=-1pt]6.south) to[out=270,in=90] ([xshift=2pt]2.north west);
+\draw [->,>=stealth'] ([xshift=5pt]8.south) to[out=270,in=90] ([xshift=2pt]4.north west);
+\draw [->,>=stealth'] ([xshift=9pt]8.south) to[out=270,in=90] ([xshift=2pt]5.north west);
+
+\node (inv1) [xshift=2em,yshift=-1em,above right of=1,rectangle]  {...};
+\draw [->,>=stealth'] ([xshift=2pt]6.south) -- (inv1.north west);
+\draw [->,>=stealth'] ([xshift=9pt]6.south) -- (inv1.north east);
+
+\node (inv2) [xshift=-2em,yshift=-1em,above right of=3,rectangle]  {...};
+\draw [->,>=stealth'] ([xshift=-4pt]8.south) -- (inv2.north east);
+\draw [->,>=stealth'] ([xshift=-8pt]8.south) -- (inv2.north west);
+\end{tikzpicture}
+}
+
+
+%
+% illustration scanning cost of range selection on dense primary index
+%
+
+\newsavebox{\rangeSelectionQueryPrimaryIndex}
+\savebox{\rangeSelectionQueryPrimaryIndex}{
+\begin{tikzpicture}
+%index blocks
+\node (0) at (0,0) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+\node (1) at (1,0) [rectangle,minimum width=1em,minimum height=1em] {...};
+\foreach \i in {2,...,4}{
+  \node (\i) at (\i,0) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};  
+}
+\node (5) at (5,0) [rectangle,minimum width=1em,minimum height=1em] {...};    
+\node (6) at (6,0) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};
+%chain of index blocks
+\foreach \i in {1,...,6}{
+    {\pgfmathsetmacro{\j}{\i - 1}
+    \draw [->,>=stealth'] ({\j}) -- (\i);}
+}
+
+%data blocks
+\node (7) at (0,-1) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};
+\node (8) at (1,-1) [rectangle,minimum width=1em,minimum height=1em] {...};
+\foreach \i in {9,...,10}{
+  \pgfmathsetmacro{\j}{\i - 7}
+  \node (\i) at (\j,-1) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};  
+}
+\node (11) at (4,-1) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+\node (12) at (5,-1) [rectangle,minimum width=1em,minimum height=1em] {...};    
+\node (13) at (6,-1) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+%chain of data blocks
+\foreach \i in {8,...,13}{
+    {\pgfmathsetmacro{\j}{\i - 1}
+    \draw [->,>=stealth'] ({\j}) -- (\i);}
+}
+
+%index and tuple keys
+\node (k) at (3.85,0) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (t) at (4.15,-1) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+
+%labels
+\node (i) [outer sep=0pt,above left of=k,draw,color=accent] {\scriptsize $\min (x') > x$};
+\node at (6.5,-1) [anchor= west]{\scriptsize Data: $N$ blocks}; 
+\node at (6.5,0) [anchor= west]{\scriptsize Index: $M$ blocks}; 
+
+\draw [color=accent,->] (i.south) to[out=270,in=90] (k.north);
+\draw [->,>=stealth'] (k.south) to[out=270,in=90] (t.north);
+\end{tikzpicture}
+}
+
+
+%
+%
+% --------------------------------------------------------------
+%
+%
+
+
+\newsavebox{\rangeSelectionQueryStackedIndex}
+\savebox{\rangeSelectionQueryStackedIndex}{
+\begin{tikzpicture}
+%index blocks
+\node (0) at (0,0) [draw,rectangle,,minimum width=1.75em,minimum height=1em] {};
+\node (1) at (1,0) [rectangle,minimum width=1em,minimum height=1em] {...};
+\foreach \i in {2,...,3}{
+  \node (\i) at (\i,0) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};  
+}
+\node (4) at (4,0) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+\node (5) at (5,0) [rectangle,minimum width=1em,minimum height=1em] {...};    
+\node (6) at (6,0) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};
+%chain of index blocks
+\foreach \i in {1,...,6}{
+    {\pgfmathsetmacro{\j}{\i - 1}
+    \draw [->,>=stealth'] ({\j}) -- (\i);}
+}
+
+%sparse index on top of dense index
+\node (14) at (1,1) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+\node (15) at (2,1)  {...};
+\node (16) at (3,1) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+\node (17) at (4,1)  {...};
+\node (18) at (5,1) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};
+\foreach \i in {15,...,18}{
+    {\pgfmathsetmacro{\j}{\i - 1}
+    \draw [->,>=stealth'] ({\j}) -- (\i);}
+}
+
+%data blocks
+\node (7) at (0,-1) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};
+\node (8) at (1,-1) [rectangle,minimum width=1em,minimum height=1em] {...};
+\foreach \i in {9,...,10}{
+  \pgfmathsetmacro{\j}{\i - 7}
+  \node (\i) at (\j,-1) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};  
+}
+\node (11) at (4,-1) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+\node (12) at (5,-1) [rectangle,minimum width=1em,minimum height=1em] {...};    
+\node (13) at (6,-1) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+%chain of data blocks
+\foreach \i in {8,...,13}{
+    {\pgfmathsetmacro{\j}{\i - 1}
+    \draw [->,>=stealth'] ({\j}) -- (\i);}
+}
+
+%index and tuple keys
+\node (k) at (3.9,0) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (s) at (2.9,1) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (t) at (4.15,-1) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+
+%labels
+\node (i) [outer sep=0pt,above left=1.5cm and -0.5cm of s,draw,color=accent] {\scriptsize $\max (x') \leq x$};
+\node (j) [outer sep=0pt,above right=1.5cm and -0.5cm of k,draw,color=accent] {\scriptsize $\min (x') > x$};
+\node at (6.5,-1) [anchor= west]{\scriptsize Data: $N$ blocks}; 
+\node at (6.5,0) [anchor= west]{\scriptsize Dense Index: $M$ blocks}; 
+\node at (6.5,1) [anchor= west]{\scriptsize Sparse Index: $K$ blocks}; 
+
+\draw [color=accent,->] (j.south) to[out=270,in=90] (k.north);
+\draw [color=accent,->] (i.south) to[out=270,in=90] (s.north);
+
+\draw [->,>=stealth'] (s.south) to[out=270,in=115] (4.north west);
+\draw [->,>=stealth'] (k.south) to[out=270,in=90] (t.north);
+\end{tikzpicture}
+}
+
+
+%
+%
+% --------------------------------------------------------------
+%
+%
+
+\newsavebox{\rangeSelectionQuerySecondaryIndex}
+\savebox{\rangeSelectionQuerySecondaryIndex}{
+\begin{tikzpicture}
+%index blocks
+\node (0) at (0,0) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+\node (1) at (1,0) [rectangle,minimum width=1em,minimum height=1em] {...};
+\foreach \i in {2,...,4}{
+  \node (\i) at (\i,0) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};  
+}
+\node (5) at (5,0) [rectangle,minimum width=1em,minimum height=1em] {...};    
+\node (6) at (6,0) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+%chain of index blocks
+\foreach \i in {1,...,6}{
+    {\pgfmathsetmacro{\j}{\i - 1}
+    \draw [->,>=stealth'] ({\j}) -- (\i);}
+}
+
+%data blocks
+\node (7) at (0,-1) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+\node (8) at (1,-1) [rectangle,minimum width=1em,minimum height=1em] {...};
+\foreach \i in {9,...,10}{
+  \pgfmathsetmacro{\j}{\i - 7}
+  \node (\i) at (\j,-1) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};  
+}
+\node (11) at (4,-1) [draw,rectangle,fill=gray!35,minimum width=1.75em,minimum height=1em] {};
+\node (12) at (5,-1) [rectangle,minimum width=1em,minimum height=1em] {...};    
+\node (13) at (6,-1) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};
+%chain of data blocks
+\foreach \i in {8,...,13}{
+    {\pgfmathsetmacro{\j}{\i - 1}
+    \draw [->,>=stealth'] ({\j}) -- (\i);}
+}
+
+%index and tuple keys
+\node (k) at (3.85,0) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (t) at (4.15,-1) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+
+%labels
+\node (i) [outer sep=0pt,above left of=k,draw,color=accent] {\scriptsize $\min (x') > x$};
+\node at (6.5,-1) [anchor= west]{\scriptsize Data: $N$ blocks}; 
+\node at (6.5,0) [anchor= west]{\scriptsize Index: $M$ blocks}; 
+
+\draw [color=accent,->] (i.south) to[out=270,in=90] (k.north);
+\draw [->,>=stealth'] (k.south) to[out=270,in=90] (t.north);
+
+% out of order keys/tuples
+\node (k2) at (4,0) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (t2) at (0.15,-1) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\draw [->,>=stealth'] (k2.south) to[out=235,in=45] (t2.north);
+
+\node (k3) at (4.15,0) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (t3) at (2.15,-1) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\draw [->,>=stealth'] (k3.south) to[out=235,in=45] (t3.north);
+
+\node (k4) at (6.15,0) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (t4) at (3.25,-1) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\draw [->,>=stealth'] (k4.south) to[out=235,in=45] (t4.north);
+
+\end{tikzpicture}
+}
+
+
+
+%
+%
+% --------------------------------------------------------------
+%
+%
+
+\newsavebox{\motivatingBucketFiles}
+\savebox{\motivatingBucketFiles}{
+\begin{tikzpicture}
+%index blocks
+\node (0) at (0,0) [draw,rectangle,fill=accent!15,minimum width=1.75em,minimum height=1em] {};
+\node (1) at (1,0) [rectangle,minimum width=1em,minimum height=1em] {...};
+\foreach \i in {2,...,4}{
+  \node (\i) at (\i,0) [draw,rectangle,fill=accent!15,minimum width=1.75em,minimum height=1em] {};  
+}
+\node (5) at (5,0) [rectangle,minimum width=1em,minimum height=1em] {...};    
+\node (6) at (6,0) [draw,rectangle,fill=accent!15,minimum width=1.75em,minimum height=1em] {};
+%chain of index blocks
+\foreach \i in {1,...,6}{
+    {\pgfmathsetmacro{\j}{\i - 1}
+    \draw [->,>=stealth'] ({\j}) -- (\i);}
+}
+
+%data blocks
+\node (7) at (0,-1.5) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};
+\node (8) at (1,-1.5) [rectangle,minimum width=1em,minimum height=1em] {...};
+\foreach \i in {9,...,10}{
+  \pgfmathsetmacro{\j}{\i - 7}
+  \node (\i) at (\j,-1.5) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};  
+}
+\node (11) at (4,-1.5) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};
+\node (12) at (5,-1.5) [rectangle,minimum width=1em,minimum height=1em] {...};    
+\node (13) at (6,-1.5) [draw,rectangle,minimum width=1.75em,minimum height=1em] {};
+%chain of data blocks
+\foreach \i in {8,...,13}{
+    {\pgfmathsetmacro{\j}{\i - 1}
+    \draw [->,>=stealth'] ({\j}) -- (\i);}
+}
+
+%index and tuple keys
+\node (k) at (3.85,0) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (t) at (4.15,-1.5) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+
+%labels
+\node at (6.5,-1.5) [anchor= west]{\scriptsize Data: $N$ blocks}; 
+\node at (6.5,0) [anchor= west]{\scriptsize Index: $M$ blocks}; 
+
+\draw [->,>=stealth'] (k.south) to[out=270,in=90] (t.north);
+
+% out of order keys/tuples
+\node (k2) at (4,0) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (t2) at (0.15,-1.5) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\draw [->,>=stealth'] (k2.south) to[out=235,in=45] (t2.north);
+
+\node (k3) at (4.15,0) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (t3) at (2.15,-1.5) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\draw [->,>=stealth'] (k3.south) to[out=235,in=45] (t3.north);
+
+\node (k4) at (6.15,0) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\node (t4) at (3.25,-1.5) [inner sep=0,outer sep=0,draw,fill=accent,rectangle,minimum width=0.25em,minimum height=1em] {};
+\draw [->,>=stealth'] (k4.south) to[out=235,in=45] (t4.north);
+
+\end{tikzpicture}
+}

@@ -1,0 +1,61 @@
+%
+% this file contains latex boxes with tables used in the examples about
+% recursion in SQL
+%
+
+%
+% Example graph language influence language
+%
+\newsavebox{\LanguageInspiredTable}
+\savebox{\LanguageInspiredTable}{%
+\scriptsize%
+\begin{tabular}{l | l}
+\multicolumn{2}{l}{\textbf{Influence}}\\
+\hline
+\rowcolor{Gray}
+\textbf{source} & \textbf{target}\\
+\hline
+Assembly & Speedcoding\\
+\hline
+Speedcoding & FORTRAN \\
+\hline
+Speedcoding & C \\
+\hline
+FORTRAN & C\\
+\hline
+C & C++\\
+\hline
+Smalltalk & ADA\\
+\hline
+ADA & C++\\
+\hline
+C & ADA\\
+\hline
+ADA & PL/SQL\\
+\hline
+\end{tabular}
+}
+
+%
+% Example graph language influence language
+%
+\newsavebox{\GraphWithCycle}
+\savebox{\GraphWithCycle}{%
+\scriptsize%
+\begin{tabular}{l | l}
+\multicolumn{2}{l}{\textbf{Edge}}\\
+\hline
+\rowcolor{Gray}
+\textbf{source} & \textbf{target}\\
+\hline
+$n_0$ & $n_1$ \\
+\hline
+$n_1$ & $n_2$ \\
+\hline
+$n_2$ & $n_1$\\
+\hline
+$n_2$ & $n_3$\\
+\hline
+\end{tabular}
+}
+

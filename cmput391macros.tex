@@ -1,0 +1,135 @@
+% \usepackage[T1]{fontenc} % font encoding
+% \usepackage{fontspec}
+\usepackage{fontspec}
+
+
+\makeatletter%
+\@ifclassloaded{beamer}{%
+  \usepackage{lmodern} %%% modern beamer style
+  %%beamer style
+  \usetheme{metropolis}
+  \usefonttheme{professionalfonts}
+  \setbeamercolor{background canvas}{bg=background}
+  \setbeamercolor{frametitle}{bg=snow,fg=black}
+  \setbeamercolor{title separator}{fg=snow}
+  \setbeamercolor{alerted text}{fg=accent}
+
+  \let\oldtitle\title
+  \renewcommand{\title}[1]{\oldtitle{CMPUT391\\#1}}
+  \author{Instructor: Denilson Barbosa}
+  \date{\small University of Alberta}
+  \institute{\today\vskip4em Slides by D. Barbosa, with suggested corrections and improvements by (in alphabetical order) C. Bins, D. Caminhas, K. Guhzva, Q. Lautischer, E. Macdonald, M. A. Nascimento, K. Newbury, M. Strobl, D. Sunderman, K. Wang, and K. Wong.}
+  
+  \titlegraphic{\includegraphics[width=1.5cm]{../images/by-sa.png}~
+  {\tiny This work is licensed under a Creative Commons Attribution 4.0 International License}}
+
+  %%%% un-framed blocks
+  \setbeamertemplate{blocks}[rounded][shadow=false]
+}{}
+
+\@ifpackageloaded{xcolor}{}{
+  \usepackage{xcolor}
+}
+\makeatother
+
+\setsansfont[BoldFont={Open Sans SemiBold}]{Open Sans}[Scale=0.9]
+\setmonofont{Cousine}[Scale=0.875]
+% \setmathtt{Cousine}[Scale=0.875]
+
+%%%% highlighting text 
+\usepackage{xspace}
+\def\highlight#1{\colorbox{accent}{\textcolor{white}{#1}}\xspace}
+
+\def\blue#1{\textcolor{blue}{#1}}
+
+%
+%
+%
+\usepackage{parskip}
+
+\usepackage{subcaption} % needed for subfigures
+
+\usepackage{wrapfig} % for figures "to the side of the text"
+
+\usepackage{anyfontsize} % for egregious warnings
+
+\input{cmput391colorsAndFonts}
+\input{cmput391drawingPackages}
+
+%
+%%% for algorithms and pseudocode
+%
+\usepackage{algorithm}
+% \usepackage{algpseudocode}
+\usepackage[noend]{algpseudocode}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\algnewcommand\algorithmicforeach{\textbf{for each}}
+\algdef{S}[FOR]{ForEach}[1]{\algorithmicforeach\ #1\ \algorithmicdo}
+% style for comments inside algorithms
+\renewcommand{\algorithmiccomment}[1]{\hspace*{1em}\textcolor{commentColor}{\%~\textit{#1}}} 
+
+%
+% to create boxes with verbatim and code-like content
+%
+\usepackage{verbatimbox}
+
+%
+% to crop/trim boxes!
+%
+\usepackage{trimclip}
+
+%
+% colored and framed boxes
+%
+\newenvironment{BOX}[1]{\begin{tcolorbox}[colback=snow!25,colframe=snow!40!black,title=#1]\small}{\end{tcolorbox}}
+
+
+
+%
+% math and symbols
+%
+\usepackage{mathtools}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}
+\usepackage{amsbsy} 
+\usepackage{amssymb}
+\usepackage{ifsym} % needed to produce the common outerjoin symbols
+
+%
+% for nice-looking enumerations and inlined enumerations
+%
+\usepackage[shortlabels,inline]{enumitem}
+
+
+
+%%% outer join symbols
+\newcommand\TextbookOuterJoin{%
+  \mathrel{\ooalign{\hss$\Join$\hss\cr%
+  \kern0.5ex\raise1ex\hbox{\scalebox{0.7}{$\circ$}}}}}
+
+\newcommand\RightOuterJoin{%
+  \mathrel{%
+  	\ooalign{%
+  		$\Join$\cr\kern1.25ex\raise0.0975ex\hbox{\scalebox{0.25}[0.8275]{$\sqsubset$}}}
+  	}
+}
+
+\newcommand\LeftOuterJoin{%
+  \mathrel{%
+  	\ooalign{%
+  		$\Join$\cr\kern-0.0125ex\raise0.0975ex\hbox{\scalebox{0.25}[0.8275]{$\sqsupset$}}}%
+	}
+}
+
+\newcommand\FullOuterJoin{%
+  \mathrel{%
+  	\ooalign{%
+  		$\Join$\cr\kern-0.0125ex\raise0.0975ex\hbox{\scalebox{0.25}[0.8275]{$\sqsupset$}}}%
+  		\kern-0.45ex\raise0.0975ex\hbox{\scalebox{0.25}[0.8275]{$\sqsubset$}}
+	}
+}
+
+
+
+

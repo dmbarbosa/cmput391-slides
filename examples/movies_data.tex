@@ -1,0 +1,347 @@
+%
+% this file has latex "boxes" with each of the tables
+% and query results for the examples involving the
+% movies database
+%
+
+\newsavebox{\MovieTable}
+\savebox{\MovieTable}{%
+\scriptsize%
+\begin{tabular}{l | l | c | l }
+\multicolumn{4}{l}{\textbf{Movie}}\\
+\hline
+\rowcolor{Gray}
+\textbf{title} & \textbf{year} & \textbf{imdb} & \textbf{director} \\
+\hline
+Ghostbusters & 1984 & 7.8 & Ivan Reitman \\
+\hline
+Big & 1988 & 7.3 & Penny Marshall \\
+\hline
+Lost in Translation & 2003 & 7.8 & Sofia Coppola \\
+\hline
+Wadjda & 2012 & 8.1 & Haifaa al-Mansour \\
+\hline
+Ghostbusters & 2016 & 5.3 & Paul Feig \\
+\hline
+\end{tabular}
+}
+
+\newsavebox{\MovieTableTWO}
+\savebox{\MovieTableTWO}{%
+\scriptsize%
+\begin{tabular}{l | l | c | l }
+\multicolumn{4}{l}{\textbf{Movie}}\\
+\hline
+\rowcolor{Gray}
+\textbf{title} & \textbf{year} & \textbf{imdb} & \textbf{director} \\
+\hline
+Lost in Translation & 2003 & 7.8 & Haifaa al-Mansour \\ % fake tuple :)
+\hline
+Groundhog day & 1993 & 8 & Harold Ramis \\
+\hline
+\end{tabular}
+}
+
+
+\newsavebox{\CinemaTable}
+\savebox{\CinemaTable}{%
+\scriptsize%
+\begin{tabular}{l | l }
+\multicolumn{2}{l}{\textbf{Cinema}}\\
+\hline
+\rowcolor{Gray}
+\textbf{name} & \textbf{address}  \\
+\hline
+Garneau & 8712 109 St, Edmonton \\
+\hline
+Princess & 10337 82 Ave, Edmonton \\
+\hline
+Landmark & 10200 102 Ave, Edmonton\\
+\hline
+\end{tabular}
+}
+
+\newsavebox{\GuideTable}
+\savebox{\GuideTable}{%
+\scriptsize%
+\begin{tabular}{l | l | l | l }
+\multicolumn{4}{l}{\textbf{Guide}}\\
+\hline
+\rowcolor{Gray}
+\textbf{theater} & \textbf{film} & \textbf{year} & \textbf{start}  \\
+\hline
+Garneau & Ghostbusters & 1984 & 1140 \\
+\hline
+Garneau & Ghostbusters & 2016 & 1290 \\
+\hline
+Princess & Wadjda & 2012 & 1260 \\
+\hline
+\end{tabular}
+}
+
+
+\newsavebox{\CastTable}
+\savebox{\CastTable}{%
+\scriptsize%
+\begin{tabular}{l | l | l | l }
+\multicolumn{4}{l}{\textbf{Cast}}\\
+\hline
+\rowcolor{Gray}
+\textbf{title} & \textbf{year} & \textbf{actor} & \textbf{role}  \\
+\hline
+Ghostbusters & 1984 & Bill Murray & Dr. Venkman \\
+\hline
+Ghostbusters & 1984 & Sigourney Weaver & Dana Barret \\
+\hline
+Big & 1988 & Tom Hanks & Josh \\
+\hline
+Big & 1988 & Elisabeth Perkins & Susan \\
+\hline
+Lost in Translation & 2003 & Bill Murray & Bob Harris \\
+\hline
+Wadjda & 2012 & Waad Mohammed & Wadjda \\
+\hline
+Ghostbusters & 2016 & Dan Aykroyd & Cabbie \\
+\hline
+Ghostbusters & 2016 & Sigourney Weaver & Dana Barret \\
+\hline
+\end{tabular}
+}
+
+%
+% box with all tables together.
+%
+%%%% NEED TO FIND A NICER WAY THAN THIS...
+\newsavebox{\FullInstance}
+\savebox{\FullInstance}{%
+	\begin{tabular}{@{}l@{}}
+		\resizebox{0.6\textwidth}{!}{\usebox{\MovieTable}}\\
+		~\\[-0.5em]
+		\resizebox{0.7\textwidth}{!}{\usebox{\CastTable}}\\
+		~\\[-0.5em]
+		\resizebox{0.95\textwidth}{!}{\usebox{\CinemaTable}~~~\usebox{\GuideTable}
+		}%
+	\end{tabular}%
+}
+
+%
+% example movie column-oriented store
+%
+\newsavebox{\MovieTableColTitle}
+\savebox{\MovieTableColTitle}{%
+\scriptsize%
+\begin{tabular}{l | l}
+\hline
+\rowcolor{Gray}
+\ColorSymbol{\textbf{id}} &\textbf{title} \\
+\hline
+\ColorSymbol{1} & Ghostbusters \\
+\hline
+\ColorSymbol{2} & Big \\
+\hline
+\ColorSymbol{3} & Lost in Translation \\
+\hline
+\ColorSymbol{4} & Wadjda \\
+\hline
+\ColorSymbol{5} & Ghostbusters \\
+\hline
+\end{tabular}
+}
+
+\newsavebox{\MovieTableColYear}
+\savebox{\MovieTableColYear}{%
+\scriptsize%
+\begin{tabular}{l | l }
+\hline
+\rowcolor{Gray}
+\ColorSymbol{\textbf{id}} &\textbf{year} \\
+\hline
+\ColorSymbol{1} & 1984 \\
+\hline
+\ColorSymbol{2} & 1988 \\
+\hline
+\ColorSymbol{3} & 2003 \\
+\hline
+\ColorSymbol{4} & 2012 \\
+\hline
+\ColorSymbol{5} & 2016 \\
+\hline
+\end{tabular}
+}
+
+\newsavebox{\MovieTableColIMDB}
+\savebox{\MovieTableColIMDB}{%
+\scriptsize%
+\begin{tabular}{l | l}
+\hline
+\rowcolor{Gray}
+\ColorSymbol{\textbf{id}} &\textbf{imdb} \\
+\hline
+\ColorSymbol{1} & 7.8 \\
+\hline
+\ColorSymbol{2} & 7.3 \\
+\hline
+\ColorSymbol{3} & 7.8 \\
+\hline
+\ColorSymbol{4} & 8.1 \\
+\hline
+\ColorSymbol{5} & 5.3 \\
+\hline
+\end{tabular}
+}
+
+\newsavebox{\MovieTableColDirector}
+\savebox{\MovieTableColDirector}{%
+\scriptsize%
+\begin{tabular}{l | l}
+\hline
+\rowcolor{Gray}
+\ColorSymbol{\textbf{id}} &\textbf{director} \\
+\hline
+\ColorSymbol{1} & Ivan Reitman \\
+\hline
+\ColorSymbol{2} & Penny Marshall \\
+\hline
+\ColorSymbol{3} & Sofia Coppola \\
+\hline
+\ColorSymbol{4} & Haifaa al-Mansour  \\
+\hline
+\ColorSymbol{5} & Paul Feig \\
+\hline
+\end{tabular}
+}
+
+
+%
+% Table with selection on Cast.actor='Bill Murray'
+%
+\newsavebox{\BillMurrayMovies}
+\savebox{\BillMurrayMovies}{%
+\scriptsize%
+\begin{tabular}{l | l | l | l }
+\rowcolor{Gray}
+\hline
+\textbf{title} & \textbf{year} & \textbf{actor} & \textbf{role}  \\
+\hline
+Ghostbusters & 1984 & Bill Murray & Dr. Venkman \\
+\hline
+Lost in Translation & 2003 & Bill Murray & Bob Harris \\
+\hline
+\end{tabular}
+}
+
+%
+% Table with projection of director on Movie
+%
+\newsavebox{\MovieDirectors}
+\savebox{\MovieDirectors}{%
+\scriptsize%
+\begin{tabular}{l }
+\rowcolor{Gray}
+\hline
+\textbf{director}  \\
+\hline
+Ivan Reitman \\
+\hline
+Penny Marshall \\
+\hline
+Sofia Coppola \\
+\hline
+Haifaa al-Mansour  \\
+\hline
+Paul Feig \\
+\hline
+\end{tabular}
+}
+
+%
+% Table with Movie \bowtie \sigma Cast.actor='Bill Murray'
+%
+\newsavebox{\JoinMoviesBillMurrayMovies}
+\savebox{\JoinMoviesBillMurrayMovies}{%
+\scriptsize%
+\begin{tabular}{l | l | c | l | l | l }
+\rowcolor{Gray}
+\hline
+\textbf{title} & \textbf{year} & \textbf{imdb} & \textbf{director} & \textbf{actor} & \textbf{role}  \\
+\hline
+Ghostbusters & 1984 & 7.8 & Ivan Reitman & Bill Murray & Dr. Venkman \\
+\hline
+Lost in Translation & 2003 & 7.8 & Sofia Coppola & Bill Murray & Bob Harris \\
+\hline
+\end{tabular}
+}
+
+%
+% Left Outer Join of Cinema and Guide
+%
+\newsavebox{\LeftOuterJoinCinemaGuide}
+\savebox{\LeftOuterJoinCinemaGuide}{%
+\scriptsize%
+\begin{tabular}{l | l | l | l | l | l}
+\hline
+\rowcolor{Gray}
+\textbf{name} & \textbf{address} & \textbf{theater} & \textbf{film} & \textbf{year} & \textbf{start} \\
+\hline
+Garneau & 8712 109 St, Edmonton & Garneau & Ghostbusters & 1984 & 1140 \\
+\hline
+Garneau & 8712 109 St, Edmonton & Garneau & Ghostbusters & 2016 & 1290 \\
+\hline
+Princess & 10337 82 Ave, Edmonton & Princess & Wadjda & 2012 & 1260 \\
+\hline
+Landmark & 10200 102 Ave, Edmonton & NULL & NULL & NULL & NULL\\
+\hline
+\end{tabular}
+}
+
+%
+% Semijoin of Cinema and Guide
+%
+\newsavebox{\SemijoinCinemaGuide}
+\savebox{\SemijoinCinemaGuide}{%
+\scriptsize%
+\begin{tabular}{l | l }
+\hline
+\rowcolor{Gray}
+\textbf{name} & \textbf{address}  \\
+\hline
+Garneau & 8712 109 St, Edmonton \\
+\hline
+Princess & 10337 82 Ave, Edmonton \\
+\hline
+\end{tabular}
+}
+
+%
+% Single tuple in self-join of Cast to get actors in reruns
+%
+\newsavebox{\SelfJoinExampleSigourneyWeaver}
+\savebox{\SelfJoinExampleSigourneyWeaver}{%
+\scriptsize%
+\begin{tabular}{l | l | l | l | l | l | l | l}
+\hline
+\rowcolor{Gray}
+\textbf{title} & \textbf{year} & \textbf{actor} & \textbf{role}  & \textbf{title2} & \textbf{year2} & \textbf{actor2} & \textbf{role2} \\
+\hline
+Ghostbusters & 1984 & Sigourney Weaver & Dana Barret & Ghostbusters & 2016 & Sigourney Weaver & Dana Barret \\
+\hline
+\end{tabular}
+}
+
+%
+% result of select theater, count(*) on Guide
+%
+\newsavebox{\CountStartOnGuideTable}
+\savebox{\CountStartOnGuideTable}{%
+\scriptsize%
+\begin{tabular}{l | l }
+\hline
+\rowcolor{Gray}
+\textbf{theater} & \textbf{COUNT} \\
+\hline
+Garneau & 2\\
+\hline
+Princess & 1\\
+\hline
+\end{tabular}
+}

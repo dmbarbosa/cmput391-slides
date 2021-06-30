@@ -1,0 +1,51 @@
+%
+% This file contains latex boxes with generic tables R, S, ...
+% used in algebra and SQL examples
+%
+
+%
+% Tables R, S for cross product example
+%
+\newsavebox{\CrossProdExR}
+\savebox{\CrossProdExR}{%
+\scriptsize%
+\begin{tabular}{l | l}
+\multicolumn{2}{l}{\textbf{R}}\\
+\rowcolor{Gray}
+\hline
+$\boldsymbol{r_1}$ & $\boldsymbol{r_2}$ \\
+\hline
+$x_1$ & $x_2$ \\
+\hline
+$x_3$ & $x_4$ \\
+\hline
+\end{tabular}
+}
+\newsavebox{\CrossProdExS}
+\savebox{\CrossProdExS}{%
+\scriptsize%
+\begin{tabular}{l | l | l}
+\multicolumn{2}{l}{\textbf{S}}\\
+\rowcolor{Gray}
+\hline
+$\boldsymbol{s_1}$ & $\boldsymbol{s_2}$ & $\boldsymbol{s_3}$\\
+\hline
+$y_1$ & $y_2$ & $y_3$\\
+\hline
+\end{tabular}
+}
+\newsavebox{\CrossProdExRS}
+\savebox{\CrossProdExRS}{%
+\scriptsize%
+\begin{tabular}{l| l | l | l | l}
+\rowcolor{Gray}
+\hline
+$\boldsymbol{r_1}$ & $\boldsymbol{r_2}$ & $\boldsymbol{s_1}$ & $\boldsymbol{s_2}$ & $\boldsymbol{s_3}$\\
+\hline
+$x_1$ & $x_2$ & $y_1$ & $y_2$ & $y_3$\\
+\hline
+$x_3$ & $x_4$ & $y_1$ & $y_2$ & $y_3$\\
+\hline
+\end{tabular}
+}
+

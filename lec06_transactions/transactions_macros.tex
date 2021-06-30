@@ -1,0 +1,67 @@
+\definecolor{Maroon}{RGB}{139,0,0}
+
+\def\READ#1#2{\texttt{#2 = \textcolor{Maroon}{read}(#1)}\xspace}
+\def\WRITE#1#2{\texttt{\textcolor{Maroon}{write}(#1,#2)}\xspace}
+\def\ASSIGN#1#2{\texttt{#1 := #2}\xspace}
+\def\INPUT#1{\texttt{\textcolor{Maroon}{input}(#1)}\xspace}
+\def\OUTPUT#1{\texttt{\textcolor{Maroon}{output}(#1)}\xspace}
+\def\COMMIT{\lstinline[style=SQL]{COMMIT}\xspace}
+\def\ABORT{\colorbox{yellow}{\lstinline[style=CMPUT391]!ABORT!}\xspace}
+
+\def\LOGSTART#1{\texttt{<START $T_{#1}$>}\xspace}
+\def\LOGCOMMIT#1{\texttt{<COMMIT $T_{#1}$>}\xspace}
+\def\LOGABORT#1{\texttt{<ABORT $T_{#1}$>}\xspace}
+
+\def\LOGUNDO#1#2#3{\texttt{<$T_{#1}$, #2, $#3$>}\xspace}
+\def\LOGREDO#1#2#3{\texttt{<$T_{#1}$, #2, $#3$>}\xspace}
+\def\LOGUNDOREDO#1#2#3#4{\texttt{<$T_{#1}$, #2, $#3$ $,#4$>}\xspace}
+
+\def\LOGCKPT{\texttt{\textcolor{exampleColor}{<CKPT>}}\xspace}
+\def\LOGBEGINCKPT#1{\texttt{\textcolor{exampleColor}{<BEGIN CKPT (#1)>}}\xspace}
+\def\LOGENDCKPT{\texttt{\textcolor{exampleColor}{<END CKPT>}}\xspace}
+
+\def\FLUSH{\texttt{\textcolor{exampleColor}{FLUSH LOG}}\xspace}
+
+%
+%
+%  CONCURRENCY CONTROL
+%
+%
+
+\def\R#1#2{$\mathtt{r}_{#1}(\text{\texttt{#2}})$\xspace}
+\def\W#1#2{$\mathtt{w}_{#1}(\text{\texttt{#2}})$\xspace}
+\def\C#1{\texttt{C}$_#1$}
+\def\A#1{\texttt{A}$_#1$}
+
+\def\R#1#2{\lstinline[style=cmput391]!read(#2)!\xspace}
+\def\W#1#2{\lstinline[style=cmput391]!write(#2)!\xspace}
+\def\C#1{\lstinline[style=cmput391]!commit()!}
+\def\A#1{\lstinline[style=cmput391]!abort()!}
+
+
+\def\L#1#2{$\mathtt{l}_{#1}(\text{\texttt{#2}})$\xspace}
+\def\U#1#2{$\mathtt{u}_{#1}(\text{\texttt{#2}})$\xspace}
+
+\def\SL#1#2{$\mathtt{sl}_{#1}(\text{\texttt{#2}})$\xspace}
+\def\XL#1#2{$\mathtt{xl}_{#1}(\text{\texttt{#2}})$\xspace}
+
+\def\SL#1#2{\lstinline[style=cmput391]!sh_lock(#2)!\xspace}
+\def\XL#1#2{\lstinline[style=cmput391]!xl_lock(#2)!\xspace}
+\def\U#1#2{\lstinline[style=cmput391]!unlock(#2)!\xspace}
+
+\def\WAIT{\textcolor{orange}{wait}\xspace}
+\def\DENY{\colorbox{yellow}{\lstinline[style=CMPUT391]!DENY!}\xspace}
+\def\DELAY{\colorbox{yellow}{\lstinline[style=CMPUT391]!DELAY!}\xspace}
+\def\ROLLBACK{\textcolor{orange}{rollback}\xspace}
+
+\def\TS#1{\texttt{TS}($T_{#1}$)}
+\def\RT#1{\texttt{RT}(\texttt{#1})}
+\def\WT#1{\texttt{WT}(\texttt{#1})}
+\def\CT#1{\texttt{C}(\texttt{#1})}
+
+\def\RS#1{\texttt{RS}($T_{#1}$)}
+\def\WS#1{\texttt{WS}($T_{#1}$)}
+
+\def\START#1{\texttt{start}($T_{#1}$)}
+\def\VAL#1{\texttt{val}($T_{#1}$)}
+\def\FIN#1{\texttt{fin}($T_{#1}$)}

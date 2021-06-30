@@ -1,0 +1,186 @@
+%!TEX root = ./lec04_access_methods.tex
+
+%
+%
+% tuple identifiers
+%   --> pointers, virtual memory, database address space
+%
+
+\newsavebox\SQLiteRowID
+\begin{lrbox}{\SQLiteRowID}\begin{minipage}{0.725\textwidth}
+\lstset{style=SQL,%
+  keywords=[4]{sqlite},keywordstyle=[4]\ttfamily\bfseries\color{exampleColor},%
+  literate =* {>}{{\textcolor{exampleColor}{>}}}1 
+              {|}{{{|}}}1} 
+\begin{lstlisting}
+sqlite> CREATE TABLE Temp(name CHAR(20));
+sqlite> INSERT INTO Temp
+   ...> VALUES ('Susan'), ('Bob'), ('Susan');
+sqlite> SELECT rowid, * FROM Temp;
+1|Susan
+2|Bob
+3|Susan
+sqlite>
+\end{lstlisting}
+\end{minipage}
+\end{lrbox}
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}{Tuple/Row identifiers}
+
+Most DBMSs assign \emph{identifiers} which are unique to every tuple in the same table,\footnote{Sometimes the identifiers are unique within the whole database.} called \emph{tuple} ids or \emph{row} ids.
+
+For example, in SQLite, every tuple is assigned a 64-bit signed integer key that uniquely identifies the tuple in the table--you insert the same data twice, you get two different tuples with different ids.
+
+\vskip1em
+
+\begin{columns}
+\begin{column}{0.4125\textwidth}
+Tuple ids are typically visible to the application. 
+
+\vskip0.5em
+
+In SQLite, one can even update them.
+\end{column}
+\begin{column}{0.5\textwidth}
+\hspace*{-2em}
+\scalebox{0.75}{\fbox{\usebox{\SQLiteRowID}}}
+\end{column}
+\end{columns}
+\end{frame}
+
+\newsavebox\SQLiteDeleteRowID
+\begin{lrbox}{\SQLiteDeleteRowID}\begin{minipage}{0.75\textwidth}
+\lstset{style=SQL,%
+  keywords=[4]{sqlite},keywordstyle=[4]\ttfamily\bfseries\color{exampleColor},%
+  literate =* {>}{{\textcolor{exampleColor}{>}}}1 
+              {|}{{{|}}}1} 
+\begin{lstlisting}
+sqlite> DELETE FROM Temp WHERE rowid IN (
+   ...>    SELECT rowid FROM Temp t
+   ...>    WHERE EXISTS (SELECT t2.rowid
+   ...>                  FROM Temp t2
+   ...>                  WHERE t2.name=t.name
+   ...>                  AND t2.rowid<t.rowid));
+sqlite> SELECT rowid, * FROM Temp;
+1|Susan
+2|Bob
+sqlite>
+\end{lstlisting}
+\end{minipage}
+\end{lrbox}
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}
+Tuple ids were initially introduced in relational systems to support the storage of objects in object-oriented programming languages, where object identity is important. Two objects are considered different if their ids are different, regardless of values.
+
+\vskip1em
+
+\begin{columns}
+\begin{column}{0.4125\textwidth}
+Tuple ids can be useful in some cases, such as eliminating duplicate tuples in relations without keys.
+\vskip0.75em
+
+In some DBMSs, tuple ids are actually symbolic references to the record
+\end{column}
+\begin{column}{0.5\textwidth}
+\hspace*{-2em}
+\scalebox{0.75}{\fbox{\usebox{\SQLiteDeleteRowID}}}
+\end{column}
+\end{columns}
+for the tuple inside the corresponding data file.
+
+One interesting use of tuple ids is in implementing column stores.
+\end{frame}
+
+%
+%
+% column stores
+%
+%
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}{Column-oriented stores}
+
+With a tuple-oriented store (slide~\ref{tuple_oriented_stores}) each record corresponds to an entire tuple of a table. For some applications, this design turns out to be sub-optimal.
+
+In \textbf{scientific applications} it is common for some relations to have hundreds or thousands of attributes, leading to records that are quite large, and a low record/block ratio.
+
+Typical queries in these applications involve only a small fraction of the attributes in the \lstinline[style=SQL]{WHERE} clause and in the value expressions, resulting in a high I/O ``per useful attribute'' cost.
+
+\textbf{On Line Analytical Processing} queries apply over business data often computing aggregations and groupings defined over a small fraction of the schema attributes.
+
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}
+The idea behind a column-store is to have separate data files for each of the attributes in the relation. 
+
+For example, the Movie relation in the running example would be stored in four separate data files like so:
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}[t]{0.3\textwidth}
+\scalebox{0.75}{\usebox{\MovieTableColTitle}}
+\end{column}
+\begin{column}{0.15\textwidth}
+\scalebox{0.75}{\usebox{\MovieTableColYear}}
+\end{column}
+\begin{column}{0.15\textwidth}
+\scalebox{0.75}{\usebox{\MovieTableColIMDB}}
+\end{column}
+\begin{column}{0.3\textwidth}
+\scalebox{0.75}{\usebox{\MovieTableColDirector}}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+This design has some advantages from a storage point of view:\\
+ - records are very simple: one id and one attribute;\\
+ - \lstinline[style=SQL]{NULL} values are easy to deal with: just ignore them;\\
+ - \textbf{data compression} can be used in each file separately.
+
+\end{frame}
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}
+What about query processing?
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}[t]{0.3\textwidth}
+\scalebox{0.75}{\usebox{\MovieTableColTitle}}
+\end{column}
+\begin{column}{0.15\textwidth}
+\scalebox{0.75}{\usebox{\MovieTableColYear}}
+\end{column}
+\begin{column}{0.15\textwidth}
+\scalebox{0.75}{\usebox{\MovieTableColIMDB}}
+\end{column}
+\begin{column}{0.3\textwidth}
+\scalebox{0.75}{\usebox{\MovieTableColDirector}}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+It is possible to evaluate SQL quite efficiently with column stores. In fact, these systems outperform tuple-stores by quite a margin on most analytical queries.
+
+The main idea is to process each condition in the \lstinline[style=SQL]{WHERE} clause separately, producing a list of tuple ids satisfying each condition. Then merge these lists based on the logical connector: \lstinline[style=SQL]{AND} means intersection, \lstinline[style=SQL]{OR} means union.
+
+Is there anything this design is \textbf{bad} for?\\
+ - YES: \lstinline[style=SQL]{SELECT * ...} queries.
+
+\end{frame}

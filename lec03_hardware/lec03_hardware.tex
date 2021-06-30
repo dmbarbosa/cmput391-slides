@@ -1,0 +1,70 @@
+\documentclass[xcolor={usenames,dvipsnames}
+    ,handout
+]{beamer}
+
+%
+% ugly hack referring to the slides folder. Works for me.
+%
+\makeatletter
+\def\input@path{{/Users/denilson/teaching/cmput391/git-slides/}}
+\makeatother
+
+
+\input{cmput391macros}
+
+\title{Hardware Basics and DBMS Applications}
+
+\begin{document}
+
+\input{examples/movies_schema}
+\input{examples/movies_data}
+
+\frame{\maketitle}
+
+%
+% ---------------------------------------------------------------------------
+%
+\begin{frame}{Simplified DBMS architecture}
+
+\begin{center}
+\includegraphics[width=0.8\textwidth]{../lec00_intro/figures/dbms_architecture}
+\end{center}
+
+These notes look into basic concepts from Computer Architecture (CMPUT229) and Operating Systems (CMPUT379) that relate to DBMSs and database applications.
+
+\end{frame}
+
+\tableofcontents
+
+%
+% ============================================================================
+%
+\section{Computer Architecture Basics}
+\input{architecture}
+
+%
+% ============================================================================
+%
+\section{Virtual Memory}
+\input{virtual_memory}
+
+%
+% ============================================================================
+%
+\section{The role of the Operating System}
+\input{os_considerations}
+
+%
+% ============================================================================
+%
+\section{DBMS Architecture Considerations}
+\input{dbms_considerations}
+
+%
+% ============================================================================
+%
+\section{Architectures of Database \textbf{Applications}}
+\input{database_applications}
+
+
+\end{document}

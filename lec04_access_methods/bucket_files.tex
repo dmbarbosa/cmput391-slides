@@ -1,0 +1,263 @@
+%!TEX root = ./lec04_access_methods.tex
+
+
+\begin{frame}
+
+Secondary indexes are defined over attributes that are not part of the primary key. Therefore, the tuples in the file are \textbf{not sorted} according to the index keys:
+
+\vskip1em
+\begin{center}
+\scalebox{1}{\usebox{\motivatingBucketFiles}}
+\end{center}
+\vskip1em
+
+Moreover, it is common for \textbf{many tuples share the same values} for these non-key attributes. For example, many movies have the same director. 
+
+In such cases, the same key is repeated multiple times in the index, which can be avoided with the help of bucket files.
+
+
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{Bucket files for secondary indexes}
+\label{bucket_files_secondary_indexes}
+
+\begin{center}
+\begin{tikzpicture}
+\node at (0,0) [anchor=north] {\scalebox{0.75}{\usebox{\bucketFile}}};
+\node at (-3.25,0.75) {\alert{Index File}};
+\node at (-0.5,0.75) {\alert{Bucket File}};
+\node at (3,0.75) {\alert{Data File}};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+
+\begin{frame}
+\label{finding_tuple_ids_with_buckets}
+Bucket files contain \alert{tuple identifiers} (i.e., pointers) \underline{clustered} according to the index key.
+
+Bucket files save space when there are many duplicate index keys (which is common with secondary indexes), and allow the DBMS to quickly find (ids of) tuples based on an attribute value:
+
+\begin{center}
+\scalebox{0.75}{\begin{minipage}{1.25\textwidth}%
+\begin{algorithm}[H]
+\begin{algorithmic}[1]
+\caption{retrieving ids of tuples with $a=x$ with secondary index on $a$}
+\State \textbf{answer} $\leftarrow \langle \rangle$
+\State $p_1 \leftarrow$ pointer (to bucket file) associated with key $x$ in the index
+\State $p_2 \leftarrow$ pointer associated with the next key in the index (or \lstinline[style=cmput391]{<EOF>} if $x$ is last key)
+\State open bucket file at position $p1$;
+\Repeat
+    \State append tuple id from current position to \textbf{answer};
+    \State advance pointer on bucket file
+\Until{reach $p_2$}
+\State \Return \textbf{answer}
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}}
+\end{center}
+\end{frame}
+
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Example:} table $R(a,b,c,d)$;\\
+\textbf{primary index} on $R.a$;\\
+\textbf{secondary indexes} on $R.b$ and $R.c$.
+
+\vskip2em
+
+\begin{center}
+\scalebox{0.75}{\usebox{\whereClauseWithBuckets}}
+\end{center}
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}[fragile]{Complex selections with tuple ids}
+
+The DBMS can solve an arbitrary selection using lists of tuple ids that satisfy each predicate separately.
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+
+\vskip1em
+\begin{lstlisting}[style=SQL]
+SELECT d
+FROM R
+WHERE b = 7 AND c = 13;
+\end{lstlisting}
+
+\vskip2em
+
+\lstinline[style=cmput391]{get_ids(IDX_R_b,b=7)} = $\langle\alert{t_3},\alert{t_4},\alert{t_6}\rangle$
+
+\lstinline[style=cmput391]{get_ids(IDX_R_c,c=13)} = $\langle\alert{t_6},\alert{t_8}\rangle$
+
+
+\end{column}
+
+\begin{column}{0.5\textwidth}
+\qquad
+\scalebox{0.75}{
+\begin{tikzpicture}[semithick,align=center,node distance=1cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (1) [below of= 0] {$\pi_{\text{d}}$};
+\node (1b) [below of =1,draw,rectangle,minimum width=0.75cm,minimum height=0.25cm,fill=snow] {};
+\node (2) [below of=1b] {\lstinline[style=cmput391]{pointer_lookup}};
+\node (2b) [below of=2,draw,rectangle,minimum width=0.75cm,minimum height=0.25cm,fill=snow] {};
+\node (3) [below of= 2b] {\lstinline[style=cmput391]{intersect_id_lists}};
+\node (3b1) [below left of =3,xshift=-1em,draw,rectangle,minimum width=0.75cm,minimum height=0.25cm,fill=snow] {};
+\node (3b2) [below right of =3,xshift=1em,draw,rectangle,minimum width=0.75cm,minimum height=0.25cm,fill=snow] {};
+\node (4) [below of= 3b1] {\lstinline[style=cmput391]{get_ids(IDX_R_b,b=7)}};
+\node (5) [below= 1.25cm of 3b2] {\lstinline[style=cmput391]{get_ids(IDX_R_c,c=13)}};
+\path[commutative diagrams/.cd, every arrow, every label]
+    (4) edge (3b1)
+    (3b1) edge (3)
+    (3) edge (2b)
+    (2b) edge (2)
+    (2) edge (1b)
+    (1b) edge (1)
+    (1) edge (0);
+\path[commutative diagrams/.cd, every arrow, every label]
+    (5) edge (3b2)
+    (3b2) edge (3);
+\pause
+\node (5) [node distance=3cm,left of=2,color=blue] {\begin{minipage}{2.15cm}\baselineskip=0.75\baselineskip \centering
+needed to retrieve attribute 'd'
+\end{minipage}};
+\draw [color=blue,->] (5) -- (2);
+\end{tikzpicture}}
+\end{column}
+\end{columns}
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+\begin{center}
+\textbf{Conjunction $\sigma_{c_1 \wedge c_2}(R)$}
+\vskip1em
+\alert{list intersection}
+\vskip1em
+
+\scalebox{0.75}{
+\begin{tikzpicture}[semithick,align=center,node distance=1cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (3) [below of= 0] {\lstinline[style=cmput391]{intersect_id_lists}};
+\node (3b1) [below left of =3,draw,rectangle,minimum width=0.75cm,minimum height=0.25cm,fill=snow] {};
+\node (3b2) [below right of =3,draw,rectangle,minimum width=0.75cm,minimum height=0.25cm,fill=snow] {};
+\node (4) [below of= 3b1] {\lstinline[style=cmput391]{get_ids(IDX_R,}$c_1$\lstinline[style=cmput391]{)}};
+\node (5) [below= 1.25cm of 3b2] {\lstinline[style=cmput391]{get_ids(IDX_R,}$c_2$\lstinline[style=cmput391]{)}};
+\path[commutative diagrams/.cd, every arrow, every label]
+    (4) edge (3b1)
+    (3b1) edge (3)
+    (3) edge (0);
+\path[commutative diagrams/.cd, every arrow, every label]
+    (5) edge (3b2)
+    (3b2) edge (3);
+\end{tikzpicture}}
+\end{center}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{center}
+\textbf{Disjunction $\sigma_{c_1 \vee c_2}(R)$}
+\vskip1em
+\alert{list union}
+\vskip1em
+
+\scalebox{0.75}{
+\begin{tikzpicture}[semithick,align=center,node distance=1cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (3) [below of= 0] {\lstinline[style=cmput391]{union_id_lists}};
+\node (3b1) [below left of =3,draw,rectangle,minimum width=0.75cm,minimum height=0.25cm,fill=snow] {};
+\node (3b2) [below right of =3,draw,rectangle,minimum width=0.75cm,minimum height=0.25cm,fill=snow] {};
+\node (4) [below of= 3b1] {\lstinline[style=cmput391]{get_ids(IDX_R,}$c_1$\lstinline[style=cmput391]{)}};
+\node (5) [below= 1.25cm of 3b2] {\lstinline[style=cmput391]{get_ids(IDX_R,}$c_2$\lstinline[style=cmput391]{)}};
+\path[commutative diagrams/.cd, every arrow, every label]
+    (4) edge (3b1)
+    (3b1) edge (3)
+    (3) edge (0);
+\path[commutative diagrams/.cd, every arrow, every label]
+    (5) edge (3b2)
+    (3b2) edge (3);
+\end{tikzpicture}}
+\end{center}
+\end{column}
+\end{columns}
+
+\vskip2em
+
+Because tuple ids are \textbf{clustered} in the bucket files, this approach can lead to very fast answers!
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\highlight{Cost of $\sigma_{a=k_1 \wedge b=k_2}(R)$:}
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\footnotesize
+\begin{column}{0.54\textwidth}
+\textbf{Example:} $R(a,b,c,d,...)$; 1 million tuples:\\
+- 1000 distinct values of attribute $a$;\\
+- 200 distinct values of attribute $b$
+
+\vskip0.5em
+Each disk block can hold:\\
+- 50 tuple (records) or\\
+- 200 key-pointer pairs or\\
+- 400 tuple ids
+\end{column}
+\begin{column}{0.45\textwidth}
+\framebox{\begin{minipage}{\textwidth}
+file sizes:\\[1em]
+- data: 20,000 blocks\\
+- index on $R.a$: \pause \alert{5 blocks}\\
+- bucket file $R.a$: \pause \alert{2,500 blocks}\\
+- index on $R.b$: \pause \alert{1 block}\\
+- bucket file $R.b$: \pause \alert{2,500 blocks}
+\end{minipage}}
+\end{column}
+\end{columns}
+
+
+\vskip1em
+
+\textbf{Table scan:} requires reading $20,000$ blocks
+
+
+\textbf{Merging id lists:}\\[0.5em]
+\pause $\big($ 5 \pause + 1 \pause \(+ \ceil*{2,500 \cdot s(R,{a=k_1})} \pause + \ceil*{2,500 \cdot s(R,{b=k_2})}\) 
+\pause + \pause \(\min(s(R,a=k_1), s(R,b=k_2)) \cdot 1,000,000\)  $~\big)$  blocks
+
+\pause
+
+NOTE: Better asymptotic costs are possible, e.g., with B+trees.
+
+
+\end{frame}

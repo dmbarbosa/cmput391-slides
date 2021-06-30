@@ -1,0 +1,379 @@
+%!TEX root = lec05_query_processing.tex
+
+%
+% -------------------------------------------------------------------
+%
+\begin{frame}[fragile]{Aggregation}
+
+Aggregation is executed by first finding groupings of tuples where they all \alert{agree on some attributes}, then applying set functions to each group:
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+
+\begin{lstlisting}[style=SQL,escapeinside={(*}{*)},frame=single]
+SELECT (*$\texttt{a}_1, \ldots, \texttt{a}_k, \texttt{fn}_1(), ..., \texttt{fn}_i()$*)
+FROM (*$T_1$*) [,  (*$\ldots$*) [, (*$T_m$*)]]
+WHERE (*$c_1$*) [ AND  ... [AND (*$c_j$*)]]
+GROUP BY (*$\texttt{a}_1,~ \ldots,~ \texttt{a}_k$*)
+HAVING (*$\texttt{hc}_1$*) [ AND (*$\ldots$*) [ AND (*$\texttt{hc}_l$*) ]]
+ORDER BY col_no [ASC | DESC]
+\end{lstlisting}
+\end{column}
+\begin{column}{0.4\textwidth}
+\scalebox{1}{
+     \begin{tikzpicture}[align=center,node distance=0.825cm,every node/.style={inner sep=0.5,outer sep=0.5,font=\footnotesize}]
+    \node (0) at (0,0) {\lstinline[style=SQL,mathescape]!sort_by(col_no)!};
+    \node (1) [below of=0] {$\pi_{\texttt{a}_1, \ldots, \texttt{a}_k, \texttt{fn}_1(), \ldots, \texttt{fn}_i()}$};
+    \node (2) [below of=1] {$\sigma_{\texttt{hc}_1 \wedge \cdots \wedge \texttt{hc}_l}$};
+    \node (3) [below of=2] {$\gamma_{\texttt{a}_1, \ldots, \texttt{a}_k, \texttt{fn}_1(), \ldots, \texttt{fn}_i()}$};
+    \node (4) [below of=3] {$\sigma_{\texttt{c}_1 \wedge \cdots \wedge \texttt{c}_j}$};
+    \node (5) [below of=4] {$T_1 \times \cdots \times T_m$};
+    \path[->]
+        (1) edge (0)
+        (2) edge (1)
+        (3) edge (2)
+        (4) edge (3)
+        (5) edge (4);
+\end{tikzpicture}%
+}
+\end{column}
+\end{columns}
+\end{frame}
+
+%
+% -------------------------------------------------------------------
+%
+\begin{frame}
+\label{aggregation_with_hashing}
+
+Computing \alert{$\gamma_{\texttt{a}_1, \ldots, \texttt{a}_k, \texttt{fn}_1(), \ldots, \texttt{fn}_m()}$} with a \textbf{hash map}:
+
+\begin{enumerate}[label=(\arabic*)]
+\item Hash every tuple resulting from $\sigma_{\texttt{c}_1 \wedge \cdots \wedge \texttt{c}_j}$ using \blue{$\texttt{a}_1, \ldots, \texttt{a}_k$} as the hash key;
+\item Go through each bucket separately, accounting for \emph{collisions};
+\begin{enumerate}[(a)]
+\item Compute each of $\texttt{fn}_1(), \ldots, \texttt{fn}_m()$ for each group;
+\item Add tuple \alert{$\texttt{a}_1, \ldots, \texttt{a}_k, \texttt{fn}_1(), \ldots, \texttt{fn}_m()$} to the output.
+\end{enumerate}
+\end{enumerate}
+\end{frame}
+
+%
+% -------------------------------------------------------------------
+%
+\begin{frame}
+\label{aggregation_with_index}
+
+Computing \alert{$\gamma_{\texttt{a}_1, \ldots, \texttt{a}_k, \texttt{fn}_1(), \ldots, \texttt{fn}_m()}$} with \textbf{sorting}:
+
+\begin{enumerate}[label=(\arabic*)]
+\item Insert tuples resulting from $\sigma_{\texttt{c}_1 \wedge \cdots \wedge \texttt{c}_j}$ into buffers in memory (or disk if there is no memory available);
+\item Sort the tuples on $\texttt{a}_1, \ldots, \texttt{a}_k$;
+\item Scan the sorted tuples in order, grouping together those with the same values for $\texttt{a}_1, \ldots, \texttt{a}_k$;
+\begin{enumerate}[(a)]
+\item Compute each of $\texttt{fn}_1(), \ldots, \texttt{fn}_m()$ for each group;
+\item Add tuple \alert{$\texttt{a}_1, \ldots, \texttt{a}_k, \texttt{fn}_1(), \ldots, \texttt{fn}_m()$} to the output.
+\end{enumerate}
+\end{enumerate}
+
+\vskip1em
+
+An alternative would be to store the tuples from $\sigma_{\texttt{c}_1 \wedge \cdots \wedge \texttt{c}_j}$ into an index in memory using $\texttt{a}_1, \ldots, \texttt{a}_k$ as indexing key.
+
+\end{frame}
+
+%
+% -------------------------------------------------------------------
+%
+\begin{frame}{Blocking Operators}
+\label{blocking_operator}
+
+Recall that with the iterator model tuples of the answer are sent to the preceding operator in the query plan \emph{one by one}.
+
+Note that the aggregation operator, in general, requires one to collect \textbf{all tuples} from the incoming operator (to form the groups) \alert{before} any output tuple can be produced\footnote{An exception to that rule would be if the incoming tuples were already sorted by the group by attributes, which is unlikely to happen too often.}.
+
+An operator that requires materializing intermediate results is called a \alert{BLOCKING operator}.
+
+Blocking operators are bad for performance--this is why some systems (especially noSQL ones) do not support aggregation at all.
+
+\end{frame}
+
+
+%
+% -------------------------------------------------------------------
+%
+\begin{frame}[fragile]{Nested Queries}
+
+Besides table expressions SQL also allows full sub-queries or as operands in set membership testing (\lstinline[style=SQL]{IN}/\lstinline[style=SQL]{NOT IN} expressions), used typically in the \lstinline[style=SQL]{WHERE} clause. 
+
+\begin{center}
+\begin{minipage}{0.8\textwidth}
+\begin{lstlisting}[style=SQL,escapeinside={(*}{*)},frame=single]
+SELECT (*$a_1, a_2, \ldots, a_n$*)
+FROM (*$T_1$*) [, (*$T_2$*) [, (*$\ldots$*) [, (*$T_m$*)]]]
+WHERE (*$c_1$*) AND (*\ldots*) AND (*$c_k$*) AND|OR (*$a_i$*) [NOT] IN (-:sub-query:-)
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+The nested \lstinline[style=SQL]{sub-query} can be \emph{correlated} with the main (outer) query if they share some tuple variable.
+
+It should be easy to see that set memberships can be rewritten as \alert{\textbf{semijoins}}.
+
+\end{frame}
+
+%
+% -------------------------------------------------------------------
+%
+\begin{frame}[fragile]
+\label{example_IN_operator}
+
+Semijoins with \emph{non-correlated} nested queries can be done efficiently with hashing, sorting or indexing (using lookups).
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.4\textwidth}
+\begin{lstlisting}[style=SQL]
+SELECT director
+FROM Movie
+WHERE year=2017 AND title 
+      IN (SELECT film
+         FROM Guide
+         WHERE start>1100);
+\end{lstlisting}
+\end{column}
+\begin{column}{0.4\textwidth}
+\scalebox{1}{
+     \begin{tikzpicture}[align=center,node distance=0.825cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+    \node (1) at (0,0) {$\pi_{\texttt{director}}$};
+    \node (2) [below of=1] {$\ltimes_{\texttt{title=film}}$};
+    \node (3) [below left= 2em and -0.125cm of 2] {$\sigma_{\texttt{year=2017}}$};
+    \node (4) [below right= 1em and -0.125cm of 2] {$\pi_{\texttt{film}}$};
+    \node (5) [below of=4] {$\sigma_{\texttt{start>1100}}$};
+    \node (6) [below of=5] {\lstinline[style=SQL]{scan(Guide)}};
+    \node (7) [below of=3] {\lstinline[style=SQL]{scan(Movie)}};
+    \path[->]
+        (2) edge (1)
+        (3) edge (2)
+        (4) edge (2)
+        (5) edge (4)
+        (6) edge (5)
+        (7) edge (3);
+\end{tikzpicture}%
+}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+Note that when evaluating an \lstinline[style=SQL]{IN} predicate we do not need to consider \emph{all possible} matches. Instead, we can send tuple from the LHS as soon as a match is found.
+
+\end{frame}
+
+\newsavebox{\parameterizedSemiJoin}
+\savebox{\parameterizedSemiJoin}{
+\begin{tikzpicture}[align=center,node distance=0.825cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+    \node (1) at (0,0) {$\pi_{\texttt{director,title,year}}$};
+    \node (2) [below of=1] {$\alert{\otimes}_{\texttt{m.imdb=imdb}}$};
+    \node (3) [below left= 2em and -0.125cm of 2] {$\rho_{\substack{\texttt{\alert{m}(m.title,m.year,}\\\texttt{m.imdb,m.director)}}}$};
+    \node (4) [below right= 1em and -0.125cm of 2] {$\pi_{\texttt{MAX(imdb)}}$};
+    \node (4b) [below of=4] {$\gamma_{\texttt{(),MAX(imdb)}}$};
+    \node (5) [below of=4b] {$\sigma_{\texttt{director=\alert{m}.director}}$};
+    \node (6) [below of=5] {\lstinline[style=SQL]{scan(Movie)}};
+    \node (7) [below of=3] {\lstinline[style=SQL]{scan(Movie)}};
+    \path[->]
+        (2) edge (1)
+        (3) edge (2)
+        (4) edge (2)
+        (5) edge (4b)
+        (4b) edge (4)
+        (6) edge (5)
+        (7) edge (3);
+    \draw[->,color=accent,thick,densely dotted] (2) to[out=270,in=135] (5);
+\end{tikzpicture}%
+}
+
+%
+% -------------------------------------------------------------------
+%
+
+\newsavebox{\correlatedMAXimdb}
+\begin{lrbox}{\correlatedMAXimdb}
+\begin{lstlisting}[style=SQL,escapechar=|]
+SELECT m.director, m.title, m.year
+FROM Movie |\alert{m}|
+WHERE m.imdb 
+      IN (SELECT MAX(imdb)
+         FROM Movie
+         WHERE director=|\alert{m}|.director);
+\end{lstlisting}
+\end{lrbox}
+
+\newsavebox{\deCorrelatedMAXimdbSQL}
+\begin{lrbox}{\deCorrelatedMAXimdbSQL}
+\begin{lstlisting}[style=SQL,escapechar=|]
+WITH -:maxIMDB:- (director,imdb) AS(
+  SELECT director, MAX(imdb)
+  FROM Movie
+  GROUP BY director
+)
+SELECT m.director, m.title, m.year
+FROM Movie m, -:maxIMDB mi:-
+WHERE m.director = -:mi:-.director 
+      AND m.imdb = -:mi:-.imdb 
+\end{lstlisting}
+\end{lrbox}
+
+
+\begin{frame}[fragile]
+
+At first it may seem that computing set membership with \emph{correlated} nested queries requires computing the sub-query for each tuple of the outer query, using some \emph{parameterized} iterator for the semijoin:
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.3\textwidth}
+\scalebox{0.9}{\usebox{\correlatedMAXimdb}}
+\end{column}
+\begin{column}{0.45\textwidth}
+\usebox\parameterizedSemiJoin
+\end{column}
+\end{columns}
+\end{frame}
+
+%
+% -------------------------------------------------------------------
+%
+\begin{frame}
+
+A parameterized semijoin operator might be very efficient in a query like this, especially if there is an index on \lstinline[style=SQL]{director} \emph{and} the join selectivity is low.
+
+An alternative is to rewrite the query, bringing the selection ``up'' to the semijoin:
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.4\textwidth}
+\usebox\parameterizedSemiJoin
+\end{column}
+\begin{column}{0.4\textwidth}
+\begin{tikzpicture}[align=center,node distance=0.825cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+    \node (1) at (0,0) {$\pi_{\texttt{director,title,year}}$};
+    \node (2) [below of=1] {$\alert{\ltimes}_{\substack{\texttt{m.imdb=t.MAX\_imdb} \wedge\\ \texttt{m.director=\alert{t.director}}}}$};
+    \node (3) [below left= 2em and -0.75cm of 2] {$\rho_{\substack{\texttt{\alert{m}(title,year,}\\\texttt{imdb,director)}}}$};
+    \node (4) [below right= 1em and -1.25cm of 2] {$\rho_{\texttt{t(director,MAX\_imdb)}}$};
+    \node (5) [below of=4] {$\gamma_{\texttt{\alert{director},MAX(imdb)}}$};
+    \node (6) [below of=5] {\lstinline[style=SQL]{scan(Movie)}};
+    \node (7) [below of=3] {\lstinline[style=SQL]{scan(Movie)}};
+    \path[->]
+        (2) edge (1)
+        (3) edge (2)
+        (4) edge (2)
+        (5) edge (4)
+        (6) edge (5)
+        (7) edge (3);
+\end{tikzpicture}%
+\end{column}
+\end{columns}
+\end{frame}
+
+%
+% -------------------------------------------------------------------
+%
+
+\begin{frame}
+
+Queries can also be de-correlated at the syntactic (SQL) level by the pre-processor. Then the query can be optimized like any other:
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.45\textwidth}
+\scalebox{0.9}{\usebox{\correlatedMAXimdb}}
+\vskip3.5em ~
+\end{column}
+\qquad\qquad
+\begin{column}{0.5\textwidth}
+\scalebox{0.9}{\usebox{\deCorrelatedMAXimdbSQL}}
+\end{column}
+\end{columns}
+
+\end{frame}
+
+%
+% -------------------------------------------------------------------
+%
+\begin{frame}{What about \lstinline[style=SQL]{NOT IN}?}
+
+It should be easy to see that \lstinline[style=SQL]{NOT IN} can be easily handled within the iterator for the semijoin operator, by reversing the test and returning a tuple from the outer table that \emph{does not} match any tuple in the inner table.
+
+\vskip1em
+
+\begin{center}
+\begin{tikzpicture}
+\node (0) at (0,0) {};
+\node (1) [below of=0] {$\ltimes$};
+\node (2) [below left=0.5cm and 0.25cm of 1] {$\mathit{exp_R}$};
+\node (3) [below right=0.5cm and 0.25cm of 1] {$\mathit{exp_S}$};
+\path[->]
+    (1) edge (0) (2) edge (1) (3) edge (1);
+\end{tikzpicture}
+\end{center}
+
+\end{frame}
+
+\newsavebox{\existsExample}
+\begin{lrbox}{\existsExample}
+\begin{lstlisting}[style=SQL,escapechar=$]
+SELECT m.director, m.title, m.year
+FROM Movie $\alert{m}$
+WHERE EXISTS (
+   SELECT *
+   FROM Guide, Cinema
+   WHERE film=$\alert{m}$.title AND
+         year=$\alert{m}$.year AND 
+         name=theater AND 
+         address LIKE "%Edmonton%"
+);
+\end{lstlisting}
+\end{lrbox}
+
+\newsavebox{\existsAsINExample}
+\begin{lrbox}{\existsAsINExample}
+\begin{lstlisting}[style=SQL,escapechar=$]
+SELECT director, title, year
+FROM Movie
+WHERE $\alert{title}$ || $\alert{year}$ IN (
+   SELECT $\alert{film}$ || $\alert{year}$
+   FROM Guide, Cinema
+   WHERE name=theater AND 
+         address LIKE "%Edmonton%"
+);
+\end{lstlisting}
+\end{lrbox}
+
+%
+% -------------------------------------------------------------------
+%
+\begin{frame}[fragile]{Sub-queries within \lstinline[style=SQL]{EXISTS}}
+\label{EXISTS_query_rewrite}
+
+Correlated sub-queries inside \lstinline[style=SQL]{EXISTS} can be rewritten using \lstinline[style=SQL]{[NOT] IN}, and evaluated using semijoins:
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.4\textwidth}
+\scalebox{0.75}{\usebox\existsExample}
+\end{column}
+\begin{column}{0.4\textwidth}
+\scalebox{0.75}{\usebox\existsAsINExample}
+\end{column}
+\end{columns}
+
+\textbf{\alert{NOTE:}} in SQL, the \lstinline[style=SQL]{IN} operator is defined for a single value expression on the LHS; thus, the example above uses string concatenation to simulate checking set membership of tuples. A real semijoin operator would not have that limitation of course.
+\end{frame}
+

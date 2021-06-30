@@ -1,0 +1,680 @@
+%!TEX root = lec05_query_processing.tex
+
+
+\begin{frame}
+
+Recall that indexes as \emph{associative access methods} that allow the DBMS to quickly find tuples based on the values of their attributes.
+
+B+ tree indexes, hash tables and hash sets can be used to implement many query plan operators: selections, joins (and their variants), all set operators, duplicate elimination, and grouping.
+
+The next slides give some examples of the use of indexes.
+
+We start by looking at \textbf{base indexes}, or indexes created by the database administrator, and discuss briefly the idea of on-the-fly indexing, which is to create an index with the result of a sub-query to be used once.
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+\vskip1em
+The table below indicates, generally, which kinds of predicates can be improved by the use of \textbf{indexes}.
+
+\vskip1.5em
+
+\begin{center}
+\begin{tabular}{l||c|c|c||c|c}
+\hline
+& $a_i = v$ & $a_i \geq v$ & $a_i$ \texttt{\footnotesize IN ()} & $a_i \neq v$ &  $a_i$ \texttt{\footnotesize NOT IN ()}\\
+\hline\hline
+B+ tree & \cmark & \cmark$^\dagger$ & \cmark & \xmark$^\ddagger$ & \cmark\\
+Hash table & \cmark & \xmark & \cmark & \xmark$^\ddagger$ & \cmark\\
+\hline
+\end{tabular}
+\end{center}
+
+\vskip1em
+
+\footnotesize
+
+$^\dagger$ If the B+tree is a secondary index and the selectivity of the predicate is high, a table scan might be better.
+
+$^\ddagger$ These predicates often \alert{have very high selectivity}, so the table scan is \alert{almost always better}.
+
+\normalsize
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+
+\newsavebox{\PickingIndexesExample}
+\begin{lrbox}{\PickingIndexesExample}
+\begin{lstlisting}[style=SQL]
+SELECT director
+FROM Movie
+WHERE title='Ghostbusters' AND year=1984
+\end{lstlisting}
+\end{lrbox}
+
+\begin{frame}[fragile]{How are Indexes Chosen?}
+
+A predicate \alert{\lstinline[mathescape]!$a_i\ $<op>$\ v$!} in the \lstinline[style=SQL]{WHERE} clause can be answered using an index only if \alert{$a_i$ is a prefix of the index key}.
+
+\vskip1em
+
+\textbf{Example:}\qquad \framebox{\scalebox{0.8}{\usebox\PickingIndexesExample}}
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.45\textwidth}
+\begin{block}{Useful Indexes}
+\lstinline[style=SQL]{Movie(title)}, ~~~~ \lstinline[style=SQL]{Movie(year)},\\
+\lstinline[style=SQL]{Movie(title,imdb)}, ... 
+\end{block}
+\end{column}
+\begin{column}{0.45\textwidth}
+\begin{block}{Not Useful}
+\lstinline[style=SQL]{Movie(imdb,title)}, \\
+\lstinline[style=SQL]{Movie(director)} ... 
+\end{block}
+\end{column}
+\end{columns}
+
+\vskip1em
+If multiple useful indexes exist, the DBMS picks the one with lowest estimated cost, which depends on the selectivity of the predicate!
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}[fragile]
+
+\begin{center}
+\small
+\begin{tabular}{r|l}
+$T(\text{Movie}) = 100,000$ & $V(\text{Movie}, \text{title}) = 95,000$ \\
+$S(\text{Movie}) = 92$ & $V(\text{Movie}, \text{year}) = 32$ \\
+$B(\text{Movie}) = 2,000$ & $V(\text{Movie}, \text{imdb}) = 50$ \\
+ & $V(\text{Movie}, \text{director}) = 25,000$ \\
+\end{tabular}
+\normalsize
+\end{center}
+
+\vskip2em
+
+Suppose we have the following B+ tree indexes with 100 pointers/node.
+
+\vskip1em
+
+\begin{quote}
+\lstinline[style=SQL]{> CREATE INDEX IDX1 ON Movie(Title);}
+\lstinline[style=SQL]{> CREATE INDEX IDX2 ON Movie(Title,Year);}
+\lstinline[style=SQL]{> CREATE INDEX IDX3 ON Movie(Year);}
+\end{quote}
+
+In all cases, 3 levels are enough to index all keys.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+How many blocks (at the leaf level) of each index will have tuples matching the query?
+
+\small
+\[T(\sigma_{\texttt{title='Ghostbusters'}}(\texttt{Movie})) = \ceil*{\frac{100,000}{95,000}}=2\]
+\[T(\sigma_{\texttt{year=1984}}(\texttt{Movie})) = \ceil*{\frac{100,000}{32}}=3,125\]
+\normalsize
+
+\vskip1em
+
+\begin{block}{\alert{We can thus expect to find:}}
+ - all movies with that title in a single \textbf{leaf} block of \lstinline[style=SQL]{IDX1}\\
+ - all movies from 1984 in 32 \textbf{leaf} blocks of \lstinline[style=SQL]{IDX3}\\
+ - all movies with that title/year in a single \textbf{leaf} block of \lstinline[style=SQL]{IDX2}
+\end{block}
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}[fragile]
+
+\begin{center}
+\framebox{\scalebox{0.8}{\usebox\PickingIndexesExample}}
+\end{center}
+
+\vskip2em
+
+\begin{columns}
+\begin{column}{0.125\textwidth}
+\begin{tikzpicture}[semithick,align=center,node distance=0.75cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (1) [below of= 0] {$\pi_{\texttt{director}}$};
+\node (2) [below of= 1] {$\sigma_{\substack{\texttt{title='Ghostbusters'}\\\wedge\, \texttt{year=1984}}}$};
+\node (3) [below of= 2] {\lstinline[style=SQL]{scan(Movie)}};
+\path[->]
+    (3) edge (2)
+    (2) edge (1)
+    (1) edge (0);
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{center}
+\begin{tikzpicture}[semithick,align=center,node distance=0.8cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (1) [below of= 0] {$\pi_{\texttt{director}}$};
+\node (2) [below of= 1] {$\sigma_{\texttt{year=1984}}$};
+\node (3) [below of= 2] {\lstinline[style=SQL]{pointer_lookup}};
+\node (4) [below of= 3] {\lstinline[style=SQL]{search(IDX1, =, "Ghostbusters")}};
+\path[->]
+    (4) edge (3)
+    (3) edge (2)
+    (2) edge (1)
+    (1) edge (0);
+
+\pause
+\node (5) [node distance=2.5cm,left of=2,color=blue] {\begin{minipage}{2.15cm}\baselineskip=0.75\baselineskip \centering
+follow the pointer to get the entire tuple 
+\end{minipage}};
+\draw [color=blue,->] (5) -- (3);
+\end{tikzpicture}
+\end{center}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+\begin{block}{\alert{Estimated I/O costs:}}
+ - left plan: 2,000 blocks\\
+ - right plan: 3 \textcolor{blue}{+ 2} = \alert{5} blocks\footnotemark
+\end{block}
+
+\footnotetext{3 I/Os on the index (root to leaf path) + 2 lookups on the table.}
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+
+\begin{frame}{Cost recap}
+
+The cost of retrieving tuples from a table $R$ satisfying a predicate $p$ using a a \alert{B+ Tree} with $|I|$ blocks at the \emph{leaf level} is the sum of:
+
+\begin{enumerate}[(1),noitemsep]
+\item Number of inner blocks in the path from root to the first index leaf (usually 2 or 3).
+\item Number of blocks of the index that will be read: \(\ceil*{s(p) \cdot |I|}\). 
+\item Number of pointer lookups: \(T(\sigma_p (R))\) (unless this is a primary index and the table is sorted as the index).
+\end{enumerate}
+
+\vskip1em
+
+With a \alert{hash table}, the estimated cost is \(T(\sigma_p (R)) \cdot 2\): one read in the hash table and another for the pointer traversal to the table.
+
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}[fragile]{Covering Index}
+
+The \alert{\lstinline[style=SQL]{pointer_lookup}} operator pulls a pointer to a tuple in \lstinline[style=SQL]{Movie} returned by the index search operator and goes to the block of file of the \lstinline[style=SQL]{Movie} table that contains the respective tuple and fetches it.
+
+This operator is needed because the query uses attributes of \lstinline[style=SQL]{Movie} that are not present in the index record (\lstinline[style=SQL]{year} and \lstinline[style=SQL]{director}).
+
+\vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.45\textwidth}
+An index with all attributes from the table used in a query is called a \alert{covering index}.
+\end{column}
+
+\begin{column}{0.5\textwidth}
+\begin{lstlisting}[style=SQL]
+SELECT year
+FROM Movie
+WHERE title='Ghostbusters'
+\end{lstlisting}
+\end{column}
+\end{columns}
+
+\lstinline[style=SQL]{IDX2} is a covering index for the query above.
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}[fragile]{Index-Based Joins}
+
+Depending on whether the index is primary or not, and on the selectivity of a join predicate, the DBMS might use a base index to speed up a nested-loop join:
+
+% \vskip1em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.35\textwidth}
+\begin{lstlisting}[style=SQL,basicstyle=\scriptsize\ttfamily]
+SELECT role, imdb
+FROM Movie 
+  JOIN Cast 
+WHERE actor='Bill Murray';
+\end{lstlisting}
+\end{column}
+\begin{column}{0.6\textwidth}
+\begin{center}
+\vspace*{-2em}
+\scalebox{0.85}{
+    \begin{tikzpicture}[semithick,align=center,node distance=0.875cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (1) [below of= 0] {$\pi_{\texttt{role,imdb}}$};
+
+\node (2) [below of= 1] {$\Join$};
+\node (3) [below right= of 2] {\lstinline[style=SQL]{pointer_lookup}} ;
+\node (4) [below left= of 2] {$\sigma_{\texttt{actor='Bill Murray'}}$};
+\node (5) [below of= 3] {\lstinline[style=SQL,mathescape]!search(IDX2, =, (t.title, t.year))!};
+\node (6) [below of =4] {\lstinline[style=SQL]{scan(Cast)}};
+
+\draw[->,color=accent,thick,densely dotted] (2) to[out=270,in=135] (5.north west);
+
+\path[commutative diagrams/.cd, every arrow, every label]
+    (6) edge (4)
+    (4) edge node {$t$} (2) 
+    (5) edge (3)
+    (3) edge (2)
+    (2) edge (1)
+    (1) edge (0);
+\end{tikzpicture}
+}
+\end{center}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+The I/O cost is bound by $s(\text{Cast},\text{actor='Bill Murray'})$.
+
+Of course, if there was an index on \lstinline[style=SQL]{Cast(actor)}, it could also be used instead of the table scan in the example above.
+
+\end{frame}
+
+\begin{frame}[fragile]{On the Fly Indexing}
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.45\textwidth}
+
+The DBMS might create an index/hash table/hash set with the results of a sub-query to speed up a join.
+
+\vskip1em
+
+\begin{lstlisting}[style=SQL,basicstyle=\scriptsize\ttfamily]
+SELECT actor, role
+FROM Cast
+WHERE (title,year) IN (
+    SELECT film, year
+    FROM Guide
+    WHERE theater='Garneau');
+\end{lstlisting}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{center}
+\vspace*{-2em}
+\scalebox{0.85}{
+    \begin{tikzpicture}[semithick,align=center,node distance=0.875cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (1) [below of= 0] {$\pi_{\texttt{actor,role}}$};
+\node (2) [below of= 1] {\alert{$\ltimes$}};
+\node (3) [below left= of 2] {\lstinline[style=SQL]{scan(Cast)}}; 
+\node (4) [below right= of 2] {\lstinline[style=SQL]{create_hash_set()}} ;
+\node (5) [below of= 4] {$\pi_{\texttt{film,year}}$};
+\node (6) [below of= 5] {$\sigma_{\texttt{theater}=\text{``Garneau''}}$};
+\node (7) [below of= 6] {\lstinline[style=SQL]{scan(Guide)}};
+
+\path[->]
+    (7) edge (6)
+    (6) edge (5)
+    (5) edge (4)
+    (4) edge (2) 
+    (3) edge (2)
+    (2) edge (1)
+    (1) edge (0);
+\end{tikzpicture}
+}
+\end{center}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+Recall the \textbf{semijoin} \alert{$R \ltimes S$} returns tuples from $R$ that match a tuple in $S$ with respect to the join attributes (\lstinline[style=SQL]{title,year}).
+
+\end{frame}
+
+
+\begin{frame}[fragile]{Answering Complex Predicates with Secondary Indexes}
+
+Primary indexes allow the fastest access to tuples in the corresponding table because \alert{the tuples in the table file are sorted in the same way as the keys in the index}.\\
+ - these indexes are sometimes called \textbf{clustered indexes}
+
+\vskip1em
+
+The problem is there can be only one primary index per table.
+
+\vskip1em
+
+A way to bring some of the benefits of primary to secondary indexes is to \textbf{cluster tuple identifiers} based on search key in an a ``bucket file'' and have a primary index over that file.
+
+\end{frame}
+
+
+\input{../lec04_access_methods/macros/flat_index_macros}
+\input{../lec04_access_methods/macros/bucket_files}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{Secondary Indexes with Bucket Files}
+\label{bucket_files_secondary_indexes}
+
+\begin{center}
+\begin{tikzpicture}
+\node at (0,0) [anchor=north] {\scalebox{0.75}{\usebox{\bucketFile}}};
+\node at (-3.25,0.25) {\alert{Index}};
+\node at (0.5,0.25) {\alert{Bucket File}};
+\node at (3.5,0.25) {\alert{Table}};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+
+\begin{frame}{Finding Tuples}
+\label{finding_tuple_ids_with_buckets}
+
+Note that the index has no duplicate entries for tuples with the same value. 
+
+To find all tuples within a range $(v_1, v_2)$, we need two pointers. 
+
+\floatstyle{plaintop}
+\restylefloat{algorithm}
+
+\begin{center}
+\scalebox{0.75}{\begin{minipage}{1.25\textwidth}%
+\begin{algorithm}[H]
+\begin{algorithmic}
+% \caption{retrieving ids of tuples with $a=x$ with secondary index on $a$}
+\State \textbf{answer} $\leftarrow \langle \rangle$
+\State $p_1 \leftarrow$ first tuple whose key is \underline{at least} $v_1$
+\State $p_2 \leftarrow$ first tuple whose key is \underline{greater than} $v_2$ (or \lstinline[style=SQL]{<EOF>})
+\State open bucket file at position $p_1$;
+\While{$p_1$ is strictly before $p_2$}
+    \State append tuple id in $p_1$ to \textbf{answer};
+    \State advance $p_1$
+\EndWhile
+\State \Return \textbf{answer}
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}}
+\end{center}
+\end{frame}
+
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Example:} table $R(a,b,c,d)$;\\
+\textbf{primary index} on $R.a$;\\
+\textbf{secondary indexes} on $R.b$ and $R.c$.
+
+\vskip2em
+
+\begin{center}
+\scalebox{0.75}{\usebox{\whereClauseWithBuckets}}
+\end{center}
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}[fragile]{Complex selections with tuple ids}
+
+The DBMS can solve an arbitrary selection using lists of tuple ids that satisfy each predicate separately.
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.25\textwidth}
+
+\vskip1em
+\begin{lstlisting}[style=SQL]
+SELECT d
+FROM R
+WHERE b = 7 AND c = 13;
+\end{lstlisting}
+
+\vskip2em
+
+\end{column}
+
+\begin{column}{0.6\textwidth}
+\qquad
+\scalebox{0.75}{
+\begin{tikzpicture}[semithick,align=center,node distance=1cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (1) [below of= 0] {$\pi_{\texttt{d}}$};
+\node (2) [below of= 1] {\lstinline[style=SQL]{pointer_lookup}};
+\node (3) [below of= 2] {\lstinline[style=SQL]{intersect_id_lists()}};
+\node (4) [below left of =3,xshift=-4em,yshift=-0.5em] {\lstinline[style=cmput391]{get_ids(IDX_R_b, 7, 7)}};
+\node (5) [below right of =3,xshift=4em,yshift=-0.5em] {\lstinline[style=cmput391]{get_ids(IDX_R_c, 13, 13)}};
+\path[->]
+    (4) edge (3)
+    (3) edge (2)
+    (2) edge (1)
+    (1) edge (0)
+    (5) edge (3);
+    
+\pause
+\node (5) [node distance=3cm,left of=2,color=blue] {\begin{minipage}{2.15cm}\baselineskip=0.75\baselineskip \centering
+needed to retrieve attribute 'd'
+\end{minipage}};
+\draw [color=blue,->] (5) -- (2);
+\end{tikzpicture}}
+\end{column}
+\end{columns}
+
+\vskip2em
+
+\lstinline[style=cmput391]{get_ids(IDX_R_b, b=7)} = $\langle\alert{t_3},\alert{t_4},\alert{t_6}\rangle$
+
+\lstinline[style=cmput391]{get_ids(IDX_R_c, c=13)} = $\langle\alert{t_6},\alert{t_8}\rangle$
+
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+\begin{center}
+\textbf{Conjunction $\sigma_{c_1 \wedge c_2}(R)$}
+\vskip1em
+\alert{list intersection}
+\vskip1em
+
+\scalebox{0.75}{
+\begin{tikzpicture}[semithick,align=center,node distance=1cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (3) [below of= 0] {\lstinline[style=SQL]{intersect_id_lists}};
+\node (4) [below left of =3, xshift=-3em,yshift=-0.5em] {\lstinline[style=SQL]{get_ids(IDX_R,}$c_1$\lstinline[style=SQL]{)}};
+\node (5) [below right of =3, xshift=3em,yshift=-0.5em] {\lstinline[style=SQL]{get_ids(IDX_R,}$c_2$\lstinline[style=SQL]{)}};
+\path[->]
+    (4) edge (3)
+    (3) edge (0)
+    (5) edge (3);
+\end{tikzpicture}}
+\end{center}
+\end{column}
+\begin{column}{0.5\textwidth}
+\begin{center}
+\textbf{Disjunction $\sigma_{c_1 \vee c_2}(R)$}
+\vskip1em
+\alert{list union}
+\vskip1em
+
+\scalebox{0.75}{
+\begin{tikzpicture}[semithick,align=center,node distance=1cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (3) [below of= 0] {\lstinline[style=SQL]{union_id_lists}};
+\node (4) [below left of =3, xshift=-3em,yshift=-0.5em] {\lstinline[style=SQL]{get_ids(IDX_R,}$c_1$\lstinline[style=SQL]{)}};
+\node (5) [below right of =3, xshift=3em,yshift=-0.5em] {\lstinline[style=SQL]{get_ids(IDX_R,}$c_2$\lstinline[style=SQL]{)}};
+\path[->]
+    (4) edge (3)
+    (3) edge (0)
+    (5) edge (3);
+\end{tikzpicture}}
+\end{center}
+\end{column}
+\end{columns}
+
+\vskip2em
+
+Because tuple ids are \textbf{clustered} in the bucket files, this approach can lead to very fast answers!
+
+\end{frame}
+
+
+\begin{frame}{I/O cost}
+
+How many blocks are read to find (the identifiers of) all tuples satisfying $v_1 \leq a_i \leq v_2$?
+
+\begin{enumerate}[label=(\arabic*)]
+\item number of blocks of the index to find the pointers: $O(h)$, where $h$ is the height of the B+tree
+
+\item number of blocks of the bucket file: $\ceil*{s(R,v_1 \leq a_i \leq v_2)\cdot(\text{\# blocks in bucket file})}$
+\end{enumerate}
+
+\vskip1em
+
+The query plan incurs more I/O operations to bring the pointers from the base table, so that the attributes can be read.
+
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\vskip2em
+\begin{columns}[onlytextwidth]
+\footnotesize
+\begin{column}{0.54\textwidth}
+\textbf{Example:} $R(a,b)$; 1 million tuples:\\
+- 1000 distinct values of attribute $a$;\\
+- 200 distinct values of attribute $b$
+
+\vskip0.5em
+Each disk block can hold:\\
+- 50 tuples or\\
+- 200 key-pointer pairs or\\
+- 400 tuple ids
+\end{column}
+\begin{column}{0.45\textwidth}
+\framebox{\begin{minipage}{\textwidth}
+file sizes:\\[1em]
+- data: 20,000 blocks\\
+- B+ tree on $R.a$: \pause \alert{2 levels}\\
+- bucket file $R.a$: \pause \alert{2,500 blocks}\\
+- B+ tree on $R.b$: \pause \alert{1 level}\\
+- bucket file $R.b$: \pause \alert{2,500 blocks}
+\end{minipage}}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+\highlight{I/O cost of $\sigma_{a=k_1 \wedge b=k_2}(R)$:}
+
+\vskip1em
+
+\small
+\textbf{Option 1 --} table scan: ~~ $20,000$ 
+
+\textbf{Option 2 --} merging lists:\\
+
+\pause \(3 + 
+\pause \ceil*{2,500\cdot s(R,\text{\lstinline[style=SQL]!a!}=k_1)+ 
+\pause 2,500 \cdot s(R,\text{\lstinline[style=SQL]!b!}=k_2)} + 
+\pause \min \left( s(R,\text{\lstinline[style=SQL]!a!}=k_1) , s(R,\text{\lstinline[style=SQL]!b!}=k_2)  \right) \cdot T(R) \)
+\end{frame}
+
+
+\begin{frame}
+
+\highlight{I/O cost of $\sigma_{a=k_1 \wedge b=k_2}(R)$:}
+
+\vskip1em
+
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.6\textwidth}
+\small
+\textbf{Option 3 --} Scan a single index:
+
+\vskip1em
+
+If one predicate has a \emph{much lower} selectivity than the other, the DBMS can read from one of the indexes and evaluate the other predicate after the tuple is retrieved from the database.
+\end{column}
+
+\begin{column}{0.4\textwidth}
+\begin{center}
+\scalebox{0.8}{
+\begin{tikzpicture}[semithick,align=center,node distance=0.75cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (1) [below of= 0] {$\sigma_{\texttt{b=}k_2}$};
+\node (2) [below of= 1] {\lstinline[style=cmput391]{pointer_lookup}};
+\node (3) [below of= 2] {\lstinline[style=cmput391]{get_ids(IDX_on_a, a=}$k_1$)};
+\path[->]
+    (3) edge (2)
+    (2) edge (1)
+    (1) edge (0);
+\end{tikzpicture}}
+\end{center}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+\small
+
+Ex: Assuming $s(R, \text{\lstinline[style=SQL]!a!}=k_1) \ll s(R,\text{\lstinline[style=SQL]!b!}=k_2)$
+
+The cost would be
+\[
+\left( 2 +  
+\pause \ceil*{2,500 \cdot s(R, {\texttt{a}=k_1}})  +
+\pause  \right) + \ceil*{T(R)\cdot s(R,\texttt{a}=k_1)} 
+\]
+\end{frame}
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,79 @@
+
+% full relational schema
+
+\newsavebox\FullMovieSchema
+\begin{lrbox}{\FullMovieSchema}\begin{minipage}{\textwidth}
+\begin{lstlisting}[style=SQL]
+CREATE TABLE Movie (title CHAR(20), year INT, imdb FLOAT,
+   PRIMARY KEY (title, year), CHECK(imdb >= 0 AND imdb <= 10));
+CREATE TABLE Director (name CHAR(20), PRIMARY KEY (name));
+CREATE TABLE Actor (name CHAR(20), PRIMARY KEY (name));
+CREATE TABLE Cinema (name CHAR(20), address CHAR(100), 
+   PRIMARY KEY(name));
+
+CREATE TABLE MovieDirector (title CHAR(20), year INT, name CHAR(20)
+  PRIMARY KEY (title, year, name),
+  FOREIGN KEY (title, year) REFERENCES Movie(title, year),
+  FOREIGN KEY (name) REFERENCES Director(name));
+
+CREATE TABLE Cast (title CHAR(20), year INT, name CHAR(20), role CHAR(20), 
+  PRIMARY KEY (title, year, name, role),
+  FOREIGN KEY (title, year) REFERENCES Movie(title, year)
+  FOREIGN KEY (name) REFERENCES Actor(name));
+
+CREATE TABLE Guide (theater CHAR(20), film CHAR(20), year INT, start INT, 
+  PRIMARY KEY (theater, film, year, start),
+  FOREIGN KEY (theater) REFERENCES Cinema(name), 
+  FOREIGN KEY (film, year) REFERENCES Movie(title, year));
+\end{lstlisting}
+\end{minipage}
+\end{lrbox}
+
+
+% simplified relational schema
+
+\newsavebox\SimplifiedMovieSchema
+\begin{lrbox}{\SimplifiedMovieSchema}\begin{minipage}{\textwidth}
+\begin{lstlisting}[style=SQL]
+CREATE TABLE Movie (title CHAR(20), year INT, imdb FLOAT, 
+   director CHAR(20) NOT NULL, PRIMARY KEY (title, year), 
+   CHECK(imdb >= 0 AND imdb <= 10));
+
+CREATE TABLE Cinema (name CHAR(20), address CHAR(100), 
+   PRIMARY KEY(name));
+
+CREATE TABLE Cast (title CHAR(20), year INT, 
+   actor CHAR(20) NOT NULL, role CHAR(20) NOT NULL, 
+   FOREIGN KEY (title, year) REFERENCES Movie(title, year));
+
+CREATE TABLE Guide (theater CHAR(20), film CHAR(20), year INT, start INT, 
+  PRIMARY KEY (theater, film, year, start),
+  FOREIGN KEY (theater) REFERENCES Cinema(name), 
+  FOREIGN KEY (film, year) REFERENCES Movie(title, year));
+\end{lstlisting}
+\end{minipage}
+\end{lrbox}
+
+% simplified CREATE MOVIE example
+
+\newsavebox\SimplifiedMovieTableDDL
+\begin{lrbox}{\SimplifiedMovieTableDDL}\begin{minipage}{0.9\textwidth}
+\begin{lstlisting}[style=SQL]
+CREATE TABLE Movie (title CHAR(20), year INT, imdb FLOAT, 
+   director CHAR(20), PRIMARY KEY (title, year), 
+   CHECK(imdb >= 0 AND imdb <= 10));
+\end{lstlisting}
+\end{minipage}
+\end{lrbox}
+
+% simplified CREATE CAST example
+
+\newsavebox\SimplifiedCastTableDDL
+\begin{lrbox}{\SimplifiedCastTableDDL}\begin{minipage}{\textwidth}
+\begin{lstlisting}[style=SQL]
+CREATE TABLE Cast (title CHAR(20), year INT, 
+   actor CHAR(20), role CHAR(20), 
+   FOREIGN KEY (title, year) REFERENCES Movie(title, year);
+\end{lstlisting}
+\end{minipage}
+\end{lrbox}

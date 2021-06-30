@@ -1,0 +1,328 @@
+%!TEX root = ./lec04_access_methods.tex
+
+%
+% -------------------------------------
+%
+\begin{frame}{Multi-Attribute Access}
+
+Goal: finding records satisfying multiple selection criteria at once\\
+- \textbf{Ex:} movies where \lstinline[style=cmput391]{year>2010 AND imdb=7.5}.
+
+\vskip1em
+
+\textbf{Option I:} use an index on \alert{either} attribute, and verify the other predicate on the other attribute for each tuple.
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.5\textwidth}
+\scalebox{0.8}{
+\begin{tikzpicture}[semithick,align=center,node distance=0.75cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (1) [below of= 0] {$\sigma_{\text{year>2010}}$};
+\node (2) [below of= 1] {\lstinline[style=cmput391]{pointer_lookup}};
+\node (3) [below of= 2] {\lstinline[style=cmput391]{get_ids(IDX_Movie_imdb, imdb=7.5)}};
+\path[->]
+    (3) edge (2)
+    (2) edge (1)
+    (1) edge (0);
+\end{tikzpicture}}
+\end{column}
+
+\begin{column}{0.5\textwidth}
+\scalebox{0.8}{
+\begin{tikzpicture}[semithick,align=center,node distance=0.75cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (1) [below of= 0] {$\sigma_{\text{imdb=7.5}}$};
+\node (2) [below of= 1] {\lstinline[style=cmput391]{pointer_lookup}};
+\node (3) [below of= 2] {\lstinline[style=cmput391]{get_ids(IDX_Movie_year, year>2010)}};
+\path[->]
+    (3) edge (2)
+    (2) edge (1)
+    (1) edge (0);
+\end{tikzpicture}}
+\end{column}
+\end{columns}
+\end{frame}
+
+%
+% -------------------------------------
+%
+\begin{frame}
+
+\textbf{Option II:} use two indexes, each on a different attribute, and \alert{merge the lists of tuple ids}.
+
+\vskip2em
+
+\begin{center}
+\scalebox{0.75}{
+\begin{tikzpicture}[semithick,align=center,node distance=1.5cm,every node/.style={inner sep=1,outer sep=1,font=\footnotesize}]
+\node (0) at (0,0) {} ; %empty node with ``answer''
+\node (3) [below of= 0] {\lstinline[style=cmput391]{intersect_id_lists}};
+\node (4) [below left of =3,xshift=-6em] 
+	{\lstinline[style=cmput391]{get_ids(IDX_Movie_imdb, imdb=7.5}\lstinline[style=cmput391]{)}};
+\node (5) [below right of =3,xshift=6em]
+	 {\lstinline[style=cmput391]{get_ids(IDX_Movie_year, year>2010}\lstinline[style=cmput391]{)}};
+\path[->]
+    (4) edge (3)
+    (3) edge (0);
+\path[->]
+    (5) edge (3);
+\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+%
+% -------------------------------------
+%
+\begin{frame}
+
+\textbf{Option III:}  use a \alert{multidimensional} index. 
+
+As the name suggests, a multidimensional index considers multiple attributes (the dimensions) at the same time. 
+
+Many of them were designed to deal with numeric data, but they can work with all kinds of attributes.
+
+\vskip2em
+
+In the examples that follow, we will consider multidimensional indexes on \lstinline[style=SQL]{(title, year)} keys.
+
+\end{frame}
+
+\newsavebox{\moviesInIMDBYear}
+\savebox{\moviesInIMDBYear}{
+	\begin{tikzpicture}[
+		every node/.style={font=\Large},
+	]
+	\draw (0,0) rectangle (10,10);
+	\coordinate (m1) at (7.8,0.5);\fill (m1) circle [radius=3pt]; \node [above right=3pt and 1pt of m1] {$t_1$};
+	\coordinate (m2) at (6.9,1);\fill (m2) circle [radius=3pt]; \node [above right=3pt and 1pt of m2] {$t_2$};
+	\coordinate (m3) at (7.8,5.75);\fill (m3) circle [radius=3pt]; \node [above right=3pt and 1pt of m3] {$t_3$};
+	\coordinate (m4) at (8.1,8);\fill (m4) circle [radius=3pt]; \node [above right=3pt and 1pt of m4] {$t_4$};
+	\coordinate (m5) at (5.3,9);\fill (m5) circle [radius=3pt]; \node [above right=3pt and 1pt of m5] {$t_5$};
+	\coordinate (m6) at (1.3,6.8);\fill (m6) circle [radius=3pt]; \node [above right=3pt and 1pt of m6] {$t_6$};
+	\coordinate (m7) at (1.9,9.1);\fill (m7) circle [radius=3pt]; \node [above right=3pt and 1pt of m7] {$t_7$};
+	\coordinate (m8) at (4,5.2);\fill (m8) circle [radius=3pt]; \node [above right=3pt and 1pt of m8] {$t_8$};
+	\coordinate (m9) at (4.25,4);\fill (m9) circle [radius=3pt]; \node [above right=3pt and 1pt of m9] {$t_9$};
+	\coordinate (m10) at (1.5,4.25);\fill (m10) circle [radius=3pt]; \node [above right=3pt and 1pt of m10] {$t_{10}$};
+	\coordinate (m11) at (8.5,0.25);\fill (m11) circle [radius=3pt]; \node [above right=3pt and 1pt of m11] {$t_{11}$};
+	\coordinate (m12) at (9,1.75);\fill (m12) circle [radius=3pt]; \node [above right=3pt and 1pt of m12] {$t_{12}$};
+	\end{tikzpicture}
+}
+
+\newenvironment{BLOCK}
+{\begin{minipage}{20pt}\baselineskip=0.75\baselineskip \centering}
+{\end{minipage}}
+
+%
+% -------------------------------------
+%
+\begin{frame}
+
+\textbf{Grid files} are a \emph{hashing-based} representation of multiple points in a $n$-dimensional space.
+
+\vskip1em
+
+Each cell of the grid points to (a chain) of \alert{bucket files}, with pointers to actual tuples (in the data file) that fall in that cell.
+
+\begin{center}
+\scalebox{0.4}{
+	\begin{tikzpicture}[
+		every node/.style={font=\Large},
+	]
+	\draw (0,0) rectangle (10,10);
+	\node at (-0.75,0.125) {\LARGE 1980};
+	\node at (-0.75,9.875) {\LARGE 2020};
+	\node at (0.125,-0.5) {\LARGE 0};
+	\node at (9.875,-0.5) {\LARGE 10};
+
+	\node at (0,0)[anchor=south west,inner sep=0,outer sep=0,xshift=-2.5pt] {\usebox\moviesInIMDBYear};
+	\draw [color=red,dashed] (3.33,0) -- (3.33,10);\draw [color=red,dashed] (6.66,0) -- (6.66,10);
+	\draw [color=red,dashed] (0,3.33) -- (10,3.33);\draw [color=red,dashed] (0,6.66) -- (10,6.66);
+
+	\node (grid) at (19,5) {
+\begin{tikzpicture}[every node/.style={draw,rectangle,minimum width=4em,minimum height=3em}]
+	\node (g11) at (0,0) [label=above:0-3.3,label=left:2006-2020] {};
+	\node (g12) [right=0pt of g11] [label=above:3.3-6.6] {};
+	\node (g13) [right=0pt of g12] [label=above:6.6-10] {};
+	\node (g21) [below=0pt of g11] [label=left:1993-2006] {};
+	\node (g22) [right=0pt of g21] {};
+	\node (g23) [right=0pt of g22] {};
+	\node (g31) [below=0pt of g21] [label=left:1980-1993] {};
+	\node (g32) [right=0pt of g31] {};
+	\node (g33) [right=0pt of g32] {};
+
+	\node (bl11) at (-2,-5)  {\begin{BLOCK}$t_7$\\$t_6$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g11.south) -- (bl11);
+	\node (bl21) at (-1,-7)  {\begin{BLOCK}$t_{10}$\\~~~\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g21.south) -- ([xshift=12pt]bl21.north);
+	\node (bl12) at (1,-5)  {\begin{BLOCK}$t_5$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g12.south) -- (bl12);
+	\node (bl22) at (2,-7)  {\begin{BLOCK}$t_8$\\$t_9$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g22.south) -- ([xshift=15pt]bl22.north);
+	\node (bl13) at (4,-5)  {\begin{BLOCK}$t_4$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g13.south) to[out=225,in=90] ([xshift=-5pt]bl13.north);
+	\node (bl23) at (5,-7)  {\begin{BLOCK}$t_3$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g23.south) to[out=315,in=90] ([xshift=15pt]bl23.north);
+	\node (bl33) at (5,-9)  {\begin{BLOCK}$t_1$\\$t_2$\end{BLOCK}};
+	\draw [densely dotted,thick,*->,color=blue] ([yshift=1.5em]g33.south) to[out=345,in=0] (bl33.east);
+	\node (bl33_b) at (2,-9)  {\begin{BLOCK}$t_{11}$\\$t_{12}$\end{BLOCK}};
+	\draw [thick,*->,color=red] ([yshift=-5pt]bl33.north west) to[out=180,in=0] (bl33_b);
+\end{tikzpicture}};
+	\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+%
+% -------------------------------------
+%
+\begin{frame}
+
+The boundaries of the grid \alert{need not} be uniformly spaced across dimensions. Moving boundaries to ``balance'' the number of points per grid cell is an interesting optimization problem.
+
+\vskip1em
+
+\begin{center}
+\scalebox{0.4}{
+	\begin{tikzpicture}[
+		every node/.style={font=\Large},
+	]
+	\draw (0,0) rectangle (10,10);
+	\node at (-0.75,0.125) {\LARGE 1980};
+	\node at (-0.75,9.875) {\LARGE 2020};
+	\node at (0.125,-0.5) {\LARGE 0};
+	\node at (9.875,-0.5) {\LARGE 10};
+
+	\node at (0,0)[anchor=south west,inner sep=0,outer sep=0,xshift=-2.5pt] {\usebox\moviesInIMDBYear};
+	\draw [color=red,dashed] (3,0) -- (3,10);
+	\draw [color=red,dashed] (6.1,0) -- (6.1,10);
+	
+	\draw [color=red,dashed] (0,4.75) -- (10,4.75);
+	\draw [color=red,dashed] (0,0.75) -- (10,0.75);
+
+	\node (grid) at (19,5) {
+\begin{tikzpicture}[every node/.style={draw,rectangle,minimum width=4em,minimum height=3em}]
+	\node (g11) at (0,0) [label=above:0-3,label=left:1999-2020] {};
+	\node (g12) [right=0pt of g11] [label=above:3-6.1] {};
+	\node (g13) [right=0pt of g12] [label=above:6.1-10] {};
+	\node (g21) [below=0pt of g11] [label=left:1985-1999] {};
+	\node (g22) [right=0pt of g21] {};
+	\node (g23) [right=0pt of g22] {};
+	\node (g31) [below=0pt of g21] [label=left:1980-1985] {};
+	\node (g32) [right=0pt of g31] {};
+	\node (g33) [right=0pt of g32] {};
+
+	\node (bl11) at (-2,-5)  {\begin{BLOCK}$t_7$\\$t_6$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g11.south) -- (bl11);
+	\node (bl21) at (-1,-7)  {\begin{BLOCK}$t_{10}$\\~~~\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g21.south) -- ([xshift=12pt]bl21.north);
+	\node (bl12) at (1,-5)  {\begin{BLOCK}$t_5$\\$t_8$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g12.south) -- (bl12);
+	\node (bl22) at (2,-7)  {\begin{BLOCK}$t_9$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g22.south) -- ([xshift=15pt]bl22.north);
+	\node (bl13) at (4,-5)  {\begin{BLOCK}$t_4$\\$t_3$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g13.south) to[out=225,in=90] ([xshift=-5pt]bl13.north);
+	\node (bl23) at (5,-7)  {\begin{BLOCK}$t_2$\\$t_{12}$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1.5em]g23.south) to[out=315,in=90] ([xshift=15pt]bl23.north);
+	\node (bl33) at (5,-9)  {\begin{BLOCK}$t_1$\\$t_{11}$\end{BLOCK}};
+	\draw [densely dotted,thick,*->] ([yshift=1em]g33.south) to[out=345,in=0] (bl33.east);
+\end{tikzpicture}};
+	\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+%
+% -------------------------------------
+%
+\begin{frame}
+
+A \textbf{Quadtree} divides the space into four quadrants, recursively as needed, until each quadrant corresponds to a single block (of a bucket file).\footnote{\url{https://en.wikipedia.org/wiki/Quadtree}}
+
+\begin{center}
+\scalebox{0.4}{
+	\begin{tikzpicture}[
+		every node/.style={font=\Large},
+	]
+	\draw (0,0) rectangle (10,10);
+	\node at (-0.75,0.125) {\LARGE 1980};
+	\node at (-0.75,9.875) {\LARGE 2020};
+	\node at (0.125,-0.5) {\LARGE 0};
+	\node at (9.875,-0.5) {\LARGE 10};
+
+	\node at (0,0)[anchor=south west,inner sep=0,outer sep=0,xshift=-2.5pt] {\usebox\moviesInIMDBYear};
+	\draw [very thick,color=red,dashed] (5,0) -- (5,10);\draw [very thick,color=red,dashed] (0,5) -- (10,5);
+
+	%Q1 split
+	\draw [color=olive,thick,dashed] (2.5,5) -- (2.5,10);\draw [color=olive,thick,dashed] (0,7.5) -- (5,7.5);
+	%Q2 split
+	\draw [color=olive,thick,dashed] (7.5,5) -- (7.5,10);\draw [color=olive,thick,dashed] (5,7.5) -- (10,7.5);
+	%Q4 split
+	\draw [color=olive,thick,dashed] (7.5,0) -- (7.5,5);\draw [color=olive,thick,dashed] (5,2.5) -- (10,2.5);
+	%Q4.4 split
+	\draw [color=magenta,dashed] (8.75,0) -- (8.75,2.5);\draw [color=magenta,dashed] (7.5,1.25) -- (10,1.25);
+
+	\node (grid) at (19,5) {
+\begin{tikzpicture}[
+	block/.style={draw,rectangle,minimum width=4em,minimum height=3em},
+	tree/.style={thick,draw,ellipse,color=blue},
+	direction/.style={fill=background,rectangle,midway}
+	]
+	\node (root) at (-2,0) [tree] {$5.0, 2000$};
+
+	\node (R_SW) at (-2,-3) [block] {\begin{BLOCK}$t_{10}$\\$t_9$\end{BLOCK}};
+	\node (R_NW) at (-5,-3) [tree] {$2.5, 2010$};
+	\node (R_NE) at (1,-3) [tree] {$7.5, 2010$};
+	\node (R_SE) at (5,-3) [tree] {$7.5, 1990$};
+	\draw [->,tree] (root) -- (R_NW) node[direction] {NW};
+	\draw [->,tree] (root) -- (R_NE) node[direction] {NE};
+	\draw [->,tree] (root) -- (R_SW) node[direction] {SW};
+	\draw [->,tree] (root) -- (R_SE) node[direction] {SE};
+		
+	\node (R_NW_SW) at (-7,-6) [block] {\begin{BLOCK}$t_{6}$\end{BLOCK}};
+	\node (R_NW_NW) at (-5.5,-7.5) [block] {\begin{BLOCK}$t_{7}$\end{BLOCK}};
+	\node (R_NW_SE) at (-4,-9) [block] {\begin{BLOCK}$t_{8}$\end{BLOCK}};
+	\draw [->,tree] (R_NW) -- (R_NW_SW) node[direction] {SW};
+	\draw [->,tree] (R_NW) -- (R_NW_NW) node[direction] {NW};
+	\draw [->,tree] (R_NW) -- (R_NW_SE) node[direction] {SE};
+
+	\node (R_NE_NW) at (-2,-6) [block] {\begin{BLOCK}$t_{5}$\end{BLOCK}};
+	\node (R_NE_NE) at (-0.5,-7.5) [block] {\begin{BLOCK}$t_{4}$\end{BLOCK}};
+	\node (R_NE_SE) at (1,-9) [block] {\begin{BLOCK}$t_{3}$\end{BLOCK}};
+
+	\draw [->,tree] (R_NE) -- (R_NE_NW) node[direction] {NW};
+	\draw [->,tree] (R_NE) -- (R_NE_NE) node[direction] {NE};
+	\draw [->,tree] (R_NE) -- (R_NE_SE) node[direction] {SE};
+
+	\node (R_SE_SE) at (5,-8) [tree] {$8.75, 1985$};
+	\node (R_SE_SW) at (3,-6) [block] {\begin{BLOCK}$t_{2}$\end{BLOCK}};
+	\draw [->,tree] (R_SE) -- (R_SE_SW) node[direction] {SW};
+	\draw [->,tree] (R_SE) -- (R_SE_SE) node[direction] {SE};
+
+	\node (R_SE_SE_SW) at (3,-11) [block] {\begin{BLOCK}$t_1$\\$t_{11}$\end{BLOCK}};
+	\node (R_SE_SE_NE) at (4.5,-12.5) [block] {\begin{BLOCK}$t_{12}$\end{BLOCK}};
+
+	\draw [->,tree] (R_SE_SE) -- (R_SE_SE_SW) node[direction] {SW};
+	\draw [->,tree] (R_SE_SE) -- (R_SE_SE_NE) node[direction] {NE};
+\end{tikzpicture}};
+	\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+%
+% -------------------------------------
+%
+\begin{frame}
+
+All multidimensional indexes extend to more than two dimensions. However, as the number of dimensions grow, so does the complexity of the index \textbf{and} the number of \underline{empty regions} that need to be represented.
+
+The costs of creating and updating these indexes depends on many design decisions of their creators, but in general they required more work than updating unidimensional B+trees or hash files.
+
+\vskip1em
+
+% Like with other indexes, instead of merging/coalescing nodes as the data is updated, most DBMSs periodically re-index the data instead.
+
+One very important multidimensional index (which is covered in the labs), designed for spatial data (e.g., maps), is the ``region tree'' (\alert{\textbf{R tree}}). Like with B+trees, nodes in the R tree correspond to disk blocks and represent (MBRs of) sub-regions of the space, instead of individual points.
+\end{frame}
+
+
+

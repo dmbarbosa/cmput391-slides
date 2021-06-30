@@ -1,0 +1,344 @@
+\documentclass[xcolor={usenames,dvipsnames}]{beamer}
+%
+% ugly hack referring to the slides folder. Works for me.
+%
+\makeatletter
+\def\input@path{{/Users/denilson/teaching/cmput391/git-slides/}}
+\makeatother
+
+\input{cmput391macros}
+
+\title{Intro to CMPUT 391}
+
+\begin{document}
+
+\input{examples/movies_schema}
+\input{examples/movies_data}
+\input{lec04_access_methods/macros/movie_flat_index_macros}
+
+\frame{\maketitle}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{frame}
+
+\begin{center}
+{\fontsize{22}{42}\selectfont \alert{Is CMPUT391 what you \textbf{imagine}?}}
+\end{center}
+
+\vskip2em
+
+\begin{BOX}{App development?}
+CMPUT391 \alert{is NOT} about application development --- Web and/or mobile database applications are covered in other courses.
+\end{BOX}
+
+\vskip1em
+\begin{BOX}{Data Science?}
+CMPUT391 \alert{is NOT} a crash-course on Data Mining, Analytics, Big Data or Data Science.
+\end{BOX}
+\end{frame}
+
+
+\begin{frame}{CMPUT 291 vs CMPUT 391?}
+
+
+\begin{block}{CMPUT 291 focused on \alert{\textbf{using} DBMSs}}
+
+\begin{enumerate}[label=\arabic* -]
+\item data modelling
+\item translating questions into queries
+\item application development with a DBMS vs using files
+\end{enumerate}
+
+\end{block}
+
+\vskip2em
+
+\begin{block}{CMPUT 391 focuses on \alert{\textbf{how} DBMSs \textbf{work}}}
+\begin{enumerate}[label=\arabic* -]
+\item start with a single-user DBMS using a single CPU computer
+\item look at how data is stored, queries are processed, and updates are scheduled
+\item then look at a multi-user distributed DBMS
+\end{enumerate}
+\end{block}
+\end{frame}
+
+
+\begin{frame}{What was CMPUT291 about?}
+\begin{BOX}{Organizing data into a relational database}
+ Application requirements $\rightarrow$ ER diagram + constraints\\
+ ER diagram + constraints $\rightarrow$ Initial Schema $\rightarrow$ Normalized schema
+\end{BOX}
+
+\vskip2em
+
+\begin{BOX}{Querying the database to satisfy an information need}
+ Application/user information \textbf{need} $\rightarrow$ SQL query
+\end{BOX}
+
+\end{frame}
+
+
+\begin{frame}{Example}
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.45\textwidth}
+\textbf{Requirements}: create an application to keep track of movies, their directors, their actors (with the role they play), and the cinemas where the movies are showing (with the start time). 
+\end{column}
+\begin{column}{0.5\textwidth}
+\includegraphics[width=\textwidth]{./figures/Movies_ER}
+\end{column}
+\end{columns}
+
+\vskip0.5em
+
+Must handle remakes (i.e., newer movie with the same title of an old one), and record IMDB scores (0 to 10) for the movies\footnote{A better design would be to also record the date when the IMDB score was collected, as they changes over time.}.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+\label{schema1}
+\vskip1em
+\scalebox{0.9}{\usebox{\FullMovieSchema}}
+\end{frame}
+
+\begin{frame}[fragile]
+
+In CMPUT291 you learned about \alert{schema refinement} by \textbf{normalization}, through decomposing relations that did not conform with a normal form.
+
+\begin{itemize}[-, noitemsep, topsep=-5pt]
+\item Normalization removes the chance of many update anomalies (which can cause many data inconsistencies). 
+\item However, decomposing a ``conceptual'' relation into several smaller ones means we often need to \textbf{join} them back together to answer user queries.
+\end{itemize}
+
+\vskip1em 
+
+In some applications, the extra cost of the joins might be unacceptable, in which case the schema is de-normalized for performance reasons.
+
+\end{frame}
+
+\begin{frame}
+
+In CMPUT391 we will use a de-normalized, but simpler schema, where we represent the relationship \lstinline{Movie}--\lstinline{Director} as an attribute of \lstinline{Movie}, we eliminate the need for joins:
+
+\vskip0.5em
+
+\begin{center}
+\hspace*{-1em}\fbox{\usebox{\SimplifiedMovieTableDDL}} % create table Movie
+\end{center}
+
+\vskip0.5em
+
+\alert{PROS:} querying for movie directors is faster... \alert{CONS:} can't record movies with multiple directors; and directors disappear from the database if we delete their movies.
+\end{frame}
+
+\begin{frame}[fragile]
+\label{schema2}
+
+\underline{Simplified schema} used in the examples
+
+\scalebox{0.9}{\usebox{\SimplifiedMovieSchema}}
+\end{frame}
+
+
+
+\begin{frame}[fragile]{Querying}
+
+In CMPUT 291 you focused on translating \textbf{user/application needs} like ``who are the actors in movies directed by Debra Granik rated 7 or higher on IMDB?''
+
+\vskip1em
+
+Into \textbf{SQL}:
+
+\begin{lstlisting}[style=SQL]
+SELECT c.actor
+FROM Cast c, Movie m
+WHERE c.title=m.title AND c.year = m.year AND
+      m.director = 'Debra Granik' AND m.IMDB >= 7;
+\end{lstlisting}
+
+\vskip1em
+
+In 391 we care only about \textbf{how} to execute queries fast.
+
+\end{frame}
+
+%%%%%%%%%%% 391
+
+
+\begin{frame}
+\begin{center}
+{\fontsize{26}{42}\selectfont What is CMPUT391 about? }
+
+\vskip2em
+
+\end{center}
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.475\textwidth}
+\begin{BOX}{How is data stored?}
+ - Hardware and I/O \\
+ - heap and sequential files\\
+ - index and hash files
+\end{BOX}
+\vskip1em
+\begin{BOX}{SQL}
+ - embedded SQL in C\\
+ - recursion\\
+ - triggers
+\end{BOX}
+
+\end{column}
+\begin{column}{0.475\textwidth}
+\begin{BOX}{Query processing?}
+ - what does an \alert{algorithm} to perform a join look like? \\
+ - what is its \alert{cost}?
+\end{BOX}
+\vskip1em
+\begin{BOX}{Transactions?}
+ - database logging\\
+ - ACID transactions \\
+ - Concurrency control
+\end{BOX}
+
+\end{column}
+\end{columns}
+
+All of that in single computer or distributed/parallel computer settings.
+
+\end{frame}
+
+
+\begin{frame}{How do we look at a database in 391?}
+
+The schema (normalized or not) goes way.
+
+We look at the files that store data (i.e., tables) and files that help us get to the data fast (i.e., indexes).
+
+\vskip2em
+
+\begin{tikzpicture}
+\node [anchor=north west] at (-0.15,0) {\scalebox{0.85}{\usebox\TitleYearIndexOnMovie}} ;
+\end{tikzpicture}
+
+\end{frame}
+
+
+\begin{frame}{What about queries and SQL updates?}
+
+We want to understand what is the \alert{most efficient} way to execute them, keeping in mind:
+
+\begin{enumerate}[label=(\alph*)]
+\item data is kept in secondary memory and must be brought into memory before anything can be done to them;
+
+\item the most efficient way of processing a statement depends both on \emph{static factors} (e.g., data organization) and \emph{dynamic factors} (e.g., the system load);
+
+\item the DBMS \textbf{must support} multiple users/applications reading/writing the same database \textbf{concurrently}
+
+\item the DBMS \textbf{must protect} the data from system failures, and \alert{ensure the database remains \textbf{consistent}} after each update
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{What \alert{else} is covered in CMPUT 391?}
+
+\begin{enumerate}[label=\arabic* - ]
+	\item Advanced relational constraints (aka Business Rules or Triggers)
+	\item Advanced SQL (recursion, crisp semantics and evaluation algorithms)
+	\item Non-relational data models and queries
+		\begin{enumerate}[label=\roman* - ]
+		\item RDF and SPARQL (\textbf{on your own} -- homework)
+		\item XML and XQuery
+		\item JSON and JSONiq (\textbf{on your own} -- homework)
+		\item Spatial data and Nearest Neighbor queries (\textbf{on your own} -- coding asisgnments)
+	\end{enumerate}
+\end{enumerate}
+
+
+\end{frame}
+
+
+
+\begin{frame}{Prerequisites}
+
+Prerequisite material which you are \highlight{expected to know} and will be tested on:
+
+\vskip1em
+
+\begin{block}{\alert{CMPUT 291}}
+ - the relational model, SQL (DDL and DML) and the algebra\\
+ - writing queries and translating between the algebra and SQL
+\end{block}
+
+\vskip1em
+
+\begin{block}{\alert{CMPUT 201}}
+- C programming; compiling and debugging C programs\\
+- working with the command line and large files; git
+\end{block}
+
+\vskip1em
+
+\begin{block}{\alert{CMPUT 204}}
+- algorithms and data structures (e.g., linked lists, sorting, hashing)\\
+- estimating time and space costs (e.g., $O(1)$, $O(n)$, $O(\log n)$).
+\end{block}
+
+\end{frame}
+
+\begin{frame}{Common student complaints -- and the truth behind them}
+
+\begin{enumerate}[label=\arabic* - ]
+\item not enough time to do the assignments -- \alert{you have at least 3 weeks for each assignment}
+
+\item \textbf{too much reading} -- \alert{no comment}
+
+\item \textbf{we are supposed to learn things on our own} -- \alert{no comment}
+
+\item no part marks for ``getting the idea right'' -- \alert{no reasonable answer is turned down in 391}
+
+\item assignments are not worth enough -- \alert{they are there for you to practice and learn; plus \textbf{you will be tested on then in the exams}}
+
+\item exams cover material not taught in class -- \alert{\textbf{yes they do}! homework and assignments are covered in the exams.}
+\end{enumerate}
+
+
+\end{frame}
+
+
+\begin{frame}{Plagiarism -- what you should know}
+
+\alert{\textbf{Every single case of plagiarism in CMPUT391 will be reported to the Faculty of Science.}}
+
+\vskip1em
+
+In previous academic terms sanctions were applied by the Faculty in every case reported. 
+
+Most cases resulted in at least one letter grade reduction.
+
+Repeating offenders received reductions of \alert{3 letter grades}.
+
+Students have failed CMPUT391 because of cheating.
+\end{frame}
+
+\begin{frame}{How to succeed in CMPUT391?}
+
+\begin{enumerate}[label=(\arabic*)]
+
+\item Start early on the homework. They do take a lot of time.
+
+\item \alert{\textbf{Consult a}} database \textbf{systems} \alert{book} regularly. Some slides condense many pages of material that cannot be explained in detail in class.
+
+\item Read the supplemental material referenced from the slides.
+
+\item \alert{Answer the practice questions} on your own. Most exam questions will be very similar to them.
+
+\item Consult your TA regularly; ask them to help you with the practice questions.
+\end{enumerate}
+
+\end{frame}
+
+
+
+\end{document}

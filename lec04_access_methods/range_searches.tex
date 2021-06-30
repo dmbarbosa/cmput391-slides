@@ -1,0 +1,142 @@
+%!TEX root = ./lec04_access_methods.tex
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}{Index searches on ranges of values}
+
+Whether or not an index on attribute $a$ helps answer \framebox{$\sigma_{a > x}(R)$} depends on the kind of index and on how many tuples fall in the range $a>x$.
+
+\vskip1em
+
+\begin{block}{\alert{Selectivity} of a predicate}
+The \textbf{selectivity} of a predicate $c$ for $R$, is the fraction of \textbf{tuples} in $R$ that satisfy $c$.
+\[s(R,c) = \frac{|\sigma_c(R)|}{|R|}\]
+\end{block}
+
+\vskip1em
+
+The slides on query processing discuss how to estimate selectivity.
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Scenario 1}: a primary flat index on a sequential file.
+
+Assume the index has $M$ blocks and the table file has $N$ blocks.
+
+\vskip2em
+
+\begin{center}
+\scalebox{0.75}{\usebox\rangeSelectionQueryPrimaryIndex}
+\end{center}
+
+\vskip1em
+
+\textbf{Cost:} \(|I_{a<x}| + |R_{a>x}|\) block reads
+
+
+\fbox{$|I_{a\leq x}| = \alert{\ceil*{M \cdot \left(1 - s(R,a > x)\right)}}$} : number of \underline{index blocks} up until the first record with key $x$ 
+
+\fbox{$|R_{a>x}| = \alert{\ceil*{N \cdot s(R,a>x)}}$} : number of \underline{data blocks} starting at $x$
+
+\end{frame}
+
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+\vskip2em
+\begin{columns}[onlytextwidth]
+\begin{column}{0.45\textwidth}
+\textbf{Example}: 1 million tuples:\\
+ - data file: 20,000 blocks \\
+ - flat index: 5,000 blocks \\
+ - $s(R,a>x)=0.2$
+\end{column}
+\begin{column}{0.55\textwidth}
+\qquad\framebox{\begin{minipage}{\textwidth}\small
+I/O Cost= index scan + table scan
+\[\ceil*{5,000 \cdot 0.8} + \ceil*{20,000 \cdot 0.2}\]
+\end{minipage}}
+\end{column}
+\end{columns}
+
+\vskip1em
+
+In practice, the DBMS decides whether or not to use the index based on an \emph{estimate} of the selectivity of the predicate.
+
+The actual number of tuples satisfying a selection condition depends on data distributions which can be quite complex. But the DBMS cannot ``remember'' everything about the data in memory. Instead, it keeps some descriptive statistics to perform its estimates.
+   
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Scenario 2}: multi-level index with a sparse on top of the same dense index as before:
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.4\textwidth}
+\textbf{Example}: 1 million tuples:\\
+ - data file: 20,000 blocks \\
+ - dense index: 5,000 blocks \\
+ - sparse index: 25 blocks \\
+ - $s(R,a>x)=0.2$
+ \end{column}
+
+\begin{column}{0.6\textwidth}
+\scalebox{0.75}{\usebox{\rangeSelectionQueryStackedIndex}}
+\end{column}
+
+\end{columns}
+
+
+\vskip3em
+
+\begin{center}
+\qquad\framebox{\begin{minipage}{0.8\textwidth}\small
+I/O Cost= sparse index scan + \alert{dense index scan} + table scan
+\[\ceil*{K \cdot 0.8} + \alert{\textbf{1}} + \ceil*{N \cdot 0.2}\]
+\end{minipage}}
+\end{center}
+\end{frame}
+
+%
+% -----------------------------------------------------------------------
+%
+\begin{frame}
+
+\textbf{Scenario 3}:  (single-level) dense \textbf{secondary} index.
+
+\begin{center}
+\scalebox{0.75}{\usebox\rangeSelectionQuerySecondaryIndex}
+\end{center}
+
+In this case, the DBMS \underline{has to read the entire index} and perform a traversal, potentially to a different block, for each pointer out of the index satisfying the predicate.
+
+\vskip2em
+
+\begin{columns}[onlytextwidth]
+\begin{column}{0.45\textwidth}
+\textbf{Example}: 1 million tuples:\\
+ - data file: 20,000 blocks \\
+ - dense index: 5,000 blocks \\
+ - $s(R,a>x)=0.2$
+\end{column}
+\begin{column}{0.55\textwidth}
+\qquad\framebox{\begin{minipage}{\textwidth}\small
+I/O Cost= index scan + pointer lookups
+\[5,000 + \ceil*{1,000,000 \cdot 0.2}\]
+\end{minipage}}
+\end{column}
+\end{columns}
+\end{frame}
+

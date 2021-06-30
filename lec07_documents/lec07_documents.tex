@@ -1,0 +1,58 @@
+\documentclass[xcolor={usenames,dvipsnames}
+    % ,handout
+]{beamer}
+
+%
+% ugly hack referring to the slides folder. Works for me.
+%
+\makeatletter
+\def\input@path{{/Users/denilson/teaching/cmput391/git-slides/}}
+\makeatother
+
+\input{cmput391macros}
+
+\def\XPath{\lstinline[language=XPath]}
+
+
+% \setlist[itemize]{noitemsep, topsep=-5pt}
+
+\title{Text and Documents}
+
+\begin{document}
+
+\lstset{style=cmput391}
+
+\input{examples/movies_schema}
+\input{examples/movies_data}
+
+
+\frame{\maketitle}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}{In a world of Big Data...}
+
+Despite all tremendous recent improvements in computing power and information technology, most information used by individuals and corporations is \alert{not relational}.
+
+\vskip2em
+
+\begin{center}
+\includegraphics[width=0.85\textwidth]{figures/Growth-in-worldwide-stored-data.png}
+\end{center}
+\end{frame}
+
+\begin{frame} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\frametitle{Outline}
+\tableofcontents
+\end{frame}
+
+\section{XML --- The Extensible Markup Language}
+\input{XML}
+
+\section{XML Query Languages}
+\input{xpath_xquery}
+
+\section{XML Support in DBMSs}
+\input{DBMS_support_XML}
+
+
+\end{document}
