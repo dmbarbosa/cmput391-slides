@@ -897,7 +897,7 @@ A very common \emph{value expression} is just an attribute name.
 \begin{column}{0.4\textwidth}
 \begin{lstlisting}[style=SQL]
 SELECT m.title
-FROM Movie m;
+FROM Movie AS m;
 \end{lstlisting}
 \end{column}
 \end{columns}
@@ -909,7 +909,7 @@ But we can use operators and functions too.\footnotemark
 \begin{column}{0.4\textwidth}
 \begin{lstlisting}[style=SQL]
 SELECT "title:{"||m.title||"}"
-FROM Movie m;
+FROM Movie AS m;
 \end{lstlisting}
 \end{column}
 \end{columns}
@@ -922,7 +922,7 @@ In fact, anything that computes a single value is OK, including full SQL queries
 \begin{lstlisting}[style=SQL]
 SELECT 100 + (
         SELECT COUNT(*)
-        FROM Movie m
+        FROM Movie AS m
        );
 \end{lstlisting}
 \end{column}
@@ -1021,9 +1021,9 @@ Using full SQL ``sub-queries'' is pretty common too.
 \begin{column}{0.45\textwidth}
 \begin{lstlisting}[style=SQL]
 SELECT m.title 
-FROM Movie m
-WHERE m.imdb = (SELECT MAX(imdb)
-                FROM Movie);
+FROM Movie AS m
+WHERE m.imdb = (SELECT MAX(m2.imdb)
+                FROM Movie AS m2);
 \end{lstlisting}
 \end{column}
 \end{columns}
@@ -1035,7 +1035,7 @@ And so is testing set membership.
 \begin{column}{0.55\textwidth}
 \begin{lstlisting}[style=SQL]
 SELECT m.title
-FROM Movie m
+FROM Movie AS m
 WHERE m.year IN (VALUES (1987),(1988));
 \end{lstlisting}
 \end{column}
@@ -1060,7 +1060,7 @@ Example:
 
 \begin{lstlisting}[style=SQL]
 SELECT g.film, g.year, m.director
-FROM Guide g, Movie m
+FROM Guide AS g, Movie AS m
 WHERE g.film = m.title AND g.year = m.year AND
       g.theater <> "Cineplex" AND m.imdb > 5 
 \end{lstlisting}      
@@ -1364,7 +1364,7 @@ SELECT director
 FROM Movie
 EXCEPT
 SELECT m.director
-FROM Movie m, Cast c
+FROM Movie AS m, Cast AS c
 WHERE m.title=c.title AND m.year=c.year AND c.actor="Bill Murray";
 \end{lstlisting}
 \end{lrbox}
@@ -1373,10 +1373,10 @@ WHERE m.title=c.title AND m.year=c.year AND c.actor="Bill Murray";
 \begin{lrbox}{\NEGATIONii}
 \begin{lstlisting}[style=SQL]
 SELECT m.director 
-FROM Movie m
+FROM Movie AS m
 WHERE NOT EXISTS(
     SELECT *
-    FROM Movie m2, Cast c
+    FROM Movie AS m2, Cast AS c
     WHERE m2.title=c.title AND m2.year=c.year AND 
         c.actor="Bill Murray" AND m2.director=m.director);
 \end{lstlisting}
@@ -1389,7 +1389,7 @@ SELECT director
 FROM Movie
 WHERE director NOT IN (
     SELECT m.director
-    FROM Movie m, Cast c
+    FROM Movie AS m, Cast AS c
     WHERE m.title=c.title AND m.year=c.year AND 
         c.actor="Bill Murray");
 \end{lstlisting}
@@ -1465,7 +1465,7 @@ All \alert{positive queries are monotonic}.
 \begin{minipage}{0.44\textwidth}
 \begin{lstlisting}[style=SQL]
 SELECT m.director
-FROM Movie m, Cast c
+FROM Movie AS m, Cast AS c
 WHERE c.actor="Bill Murray"
       AND m.title=c.title
       AND m.year=c.year;
@@ -1531,14 +1531,14 @@ We use \underline{\textbf{double negation}} instead: the director of a Movie $m$
   keywords=[1]{SELECT,FROM,WHERE,EXISTS}}
 \begin{lstlisting}[style=SQL]
 SELECT m.director
-FROM Movie m
+FROM Movie AS m
 WHERE NOT EXISTS (
             SELECT c.title, c.year
-            FROM Cast c
+            FROM Cast AS c
             WHERE c.actor="Bill Murray"
             EXCEPT
             SELECT m2.title, m2.year
-            FROM Movie m2
+            FROM Movie AS m2
             WHERE m.director=m2.director
     );
 \end{lstlisting}
@@ -1887,7 +1887,7 @@ UNION
 \end{minipage}
 \end{lrbox}
 
-\begin{frame}[fragile]{SQL:199 Recursion}
+\begin{frame}[fragile]{SQL:1999 Recursion}
 Any recursive query must be defined as the \lstinline[style=SQL]{UNION} of two queries:
 
 \begin{center}
@@ -1922,7 +1922,7 @@ In particular, it cannot use:
 
 
 
-\begin{frame}{SQL:199 Recursion --- Semantics}
+\begin{frame}{SQL:1999 Recursion --- Semantics}
 
 \begin{block}{The \emph{fixpoint} of an operator}
 Suppose we start with a relation $R$, and that we repeatedly redefine it based on an operator $\oplus$ like so: 
